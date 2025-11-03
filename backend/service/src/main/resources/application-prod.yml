@@ -1,0 +1,31 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  session:
+    jdbc:
+      initialize-schema: never
+attendance:
+  data-dir: ${DATA_DIR:backend/runtime/data}
+
+server:
+  servlet:
+    session:
+      timeout: ${SESSION_TIMEOUT:30m}
+
+app:
+  security:
+    allowed-origins: ${PROD_ALLOWED_ORIGINS:https://your-domain.example}
+  integrations:
+    audit-log-level: WARN
+
+external:
+  api:
+    base-url: ${API_BASE_URL:https://api.your-domain.example/v1}
+    token: ${API_TOKEN:}
+  domain:
+    url: ${DOMAIN_URL:https://your-domain.example}
+
+supabase:
+  gotrue:
+    cookie-secure: ${SUPABASE_COOKIE_SECURE:true}

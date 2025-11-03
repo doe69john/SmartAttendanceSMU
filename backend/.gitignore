@@ -1,0 +1,21 @@
+# Maven build outputs
+backend/target/
+companion/target/
+
+# Runtime artefacts
+backend/runtime/data/
+backend/runtime/logs/
+backend/runtime/tmp/
+backend/runtime/attendance.log*
+backend/runtime/*.lck
+
+# IDE metadata
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# Local env files
+.env.local
+.env

@@ -1,0 +1,22 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  session:
+    jdbc:
+      initialize-schema: always
+
+attendance:
+  data-dir: ${DATA_DIR:backend/runtime/data}
+
+app:
+  security:
+    allowed-origins: ${DEV_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://0.0.0.0:5173,http://[::1]:5173,http://192.168.*:5173}
+    skip-ownership-checks: ${DEV_SKIP_OWNERSHIP_CHECKS:true}
+
+external:
+  api:
+    base-url: ${DEV_API_BASE_URL:http://localhost:18080/api}
+    token: ${DEV_API_TOKEN:}
+  domain:
+    url: ${DEV_DOMAIN_URL:http://localhost:18080}

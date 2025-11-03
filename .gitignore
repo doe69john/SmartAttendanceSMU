@@ -1,0 +1,61 @@
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories and build outputs
+node_modules/
+**/node_modules/
+dist/
+dist-ssr/
+*.local
+out/
+**/target/
+**/build/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDE and tool state
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.iml
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+# OS files
+.DS_Store
+Thumbs.db
+
+# Maven wrapper artifacts
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Runtime data and generated artifacts
+# Spring project helpers
+HELP.md
+backend/service/HELP.md
+
+backend/service/runtime/data/cache/
+backend/service/runtime/data/attendance.db
+backend/service/runtime/data/model/*
+!backend/service/runtime/data/model/.gitkeep
+!backend/service/runtime/data/model/labels.txt
+backend/service/runtime/data/staging/
+backend/service/runtime/data/tmp/
+backend/service/runtime/logs/
+backend/service/runtime/attendance.log
+backend/service/runtime/attendance.log.*
+backend/service/runtime/*.lck
+backend/service/runtime/hs_err_pid*.log

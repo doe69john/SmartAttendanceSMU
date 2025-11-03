@@ -1,0 +1,231 @@
+
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
+/* Smart Attendance System Design System
+All colors MUST be HSL. Professional education theme with modern touches.
+*/
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 210 20% 15%;
+    
+    /* Primary - Professional Blue for education */
+    --primary: 210 80% 50%;
+    --primary-hover: 210 80% 45%;
+    --primary-glow: 210 80% 60%;
+    --primary-muted: 210 30% 90%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 20% 15%;
+    --card-hover: 210 15% 98%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 20% 15%;
+
+    --primary: 210 80% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 100% 95%;
+    --secondary-foreground: 210 20% 15%;
+    
+    /* Success - Green for attendance marked */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 142 30% 90%;
+    
+    /* Warning - Orange for late attendance */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-muted: 38 30% 90%;
+    
+    /* Academic colors */
+    --academic-red: 0 65% 55%;
+    --academic-blue: 210 80% 50%;
+    --academic-green: 142 76% 36%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 210 10% 45%;
+
+    --accent: 210 15% 95%;
+    --accent-foreground: 210 20% 15%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 15% 88%;
+    --input: 210 15% 95%;
+    --ring: 210 80% 50%;
+
+    --radius: 0.75rem;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--academic-blue)) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--card-hover)) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 2px 4px hsl(var(--primary) / 0.1);
+    --shadow-md: 0 4px 12px hsl(var(--primary) / 0.15);
+    --shadow-lg: 0 8px 25px hsl(var(--primary) / 0.2);
+    --shadow-glow: 0 0 20px hsl(var(--primary-glow) / 0.3);
+    
+    /* Animations */
+    --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 210 25% 8%;
+    --foreground: 210 15% 92%;
+
+    --card: 210 20% 12%;
+    --card-foreground: 210 15% 92%;
+    --card-hover: 210 20% 15%;
+
+    --popover: 210 20% 12%;
+    --popover-foreground: 210 15% 92%;
+
+    --primary: 210 80% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 210 80% 50%;
+    --primary-glow: 210 80% 65%;
+    --primary-muted: 210 30% 25%;
+
+    --secondary: 45 50% 25%;
+    --secondary-foreground: 210 15% 92%;
+
+    --muted: 210 20% 20%;
+    --muted-foreground: 210 10% 65%;
+
+    --accent: 210 15% 18%;
+    --accent-foreground: 210 15% 92%;
+
+    --destructive: 0 65% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Success - Green for attendance marked */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 142 30% 25%;
+    
+    /* Warning - Orange for late attendance */
+    --warning: 38 85% 55%;
+    --warning-foreground: 0 0% 100%;
+    --warning-muted: 38 30% 25%;
+
+    --border: 210 15% 25%;
+    --input: 210 15% 18%;
+    --ring: 210 80% 55%;
+    
+    /* Dark mode gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(210 70% 45%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--card-hover)) 100%);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-image: radial-gradient(circle at 25% 25%, hsl(var(--primary) / 0.05) 0%, transparent 50%);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .btn-gradient {
+    @apply bg-gradient-to-r from-primary to-primary-glow text-primary-foreground;
+    @apply shadow-md hover:shadow-lg transition-all duration-300;
+    @apply border-0 hover:from-primary-hover hover:to-primary;
+  }
+  
+  .card-gradient {
+    background: var(--gradient-card);
+    @apply shadow-sm hover:shadow-md transition-all duration-300;
+  }
+  
+  .text-gradient {
+    background: var(--gradient-primary);
+    @apply bg-clip-text text-transparent;
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+}
+
+@layer utilities {
+  .shadow-elegant {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .transition-fast {
+    transition: var(--transition-fast);
+  }
+  
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+  to {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.5);
+  }
+}
