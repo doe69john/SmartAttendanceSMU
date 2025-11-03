@@ -15,7 +15,7 @@ server:
 
 app:
   security:
-    allowed-origins: ${PROD_ALLOWED_ORIGINS:https://your-domain.example}
+    allowed-origins: ${PROD_ALLOWED_ORIGINS:https://smartattendancesmu.pages.dev/}
   integrations:
     audit-log-level: WARN
 
@@ -24,7 +24,7 @@ external:
     base-url: ${API_BASE_URL:https://api.your-domain.example/v1}
     token: ${API_TOKEN:}
   domain:
-    url: ${DOMAIN_URL:https://your-domain.example}
+    url: ${DOMAIN_URL:}
 
 supabase:
   gotrue:
