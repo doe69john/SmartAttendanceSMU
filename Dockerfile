@@ -2,39 +2,35 @@
     FROM maven:3.9-eclipse-temurin-21 AS build
     WORKDIR /build
     
-    # Prime the Maven cache with just POMs first (faster incremental builds)
+    # Speed up incremental builds by priming deps first
     COPY backend/pom.xml backend/pom.xml
     COPY backend/service/pom.xml backend/service/pom.xml
-    # If companion is a separate Maven module with its own pom.xml, uncomment:
-    # COPY backend/companion/pom.xml backend/companion/pom.xml
-    
-    # Go offline for deps for the service module
     RUN mvn -q -ntp -f backend/service/pom.xml -DskipTests dependency:go-offline
     
-    # Now copy the full backend sources
+    # Now copy full backend sources and build the app jar
     COPY backend backend
-    
-    # Package the Spring Boot service (fat jar)
     RUN mvn -ntp -f backend/service/pom.xml -DskipTests package
-    
     
     # ---------- runtime stage ----------
     FROM eclipse-temurin:21-jre
     WORKDIR /app
     
-    # Copy the packaged service JAR
+    # App jar
     COPY --from=build /build/backend/service/target/*.jar /app/app.jar
     
-    # Copy the entire backend tree (runtime expects /app/backend/... paths)
+    # Ship the entire backend tree (your code expects /app/backend/...)
     COPY --from=build /build/backend /app/backend
     
-    # Some code paths look for an absolute "/companion" — provide it
-    RUN ln -s /app/backend/companion /companion || true
+    # Make the companion module visible at BOTH paths:
+    #  - /app/backend/companion   (already present from the copy above)
+    #  - /app/companion           (your error shows the app is probing here)
+    # Prefer a symlink; if your platform ever had issues with symlinks, swap to a copy.
+    RUN ln -s /app/backend/companion /app/companion || (mkdir -p /app/companion && cp -a /app/backend/companion/. /app/companion/)
     
-    # Reasonable JVM defaults for containers
+    # JVM defaults suitable for small instances
     ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:InitialRAMPercentage=25"
     
-    # Render expects you to listen on $PORT (default 10000) on 0.0.0.0
+    # Render scans for a listener on $PORT and expects 0.0.0.0; default is 10000
     EXPOSE 10000
     CMD ["sh","-c","java $JAVA_OPTS -Dserver.address=0.0.0.0 -Dserver.port=${PORT:-10000} -jar /app/app.jar"]
     
