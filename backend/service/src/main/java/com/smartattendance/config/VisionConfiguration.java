@@ -72,6 +72,7 @@ public class VisionConfiguration {
 
     @Bean
     public HaarFaceDetector haarFaceDetector() {
+        nu.pattern.OpenCV.loadLocally();
         Path cascade = properties.directories().modelDir().resolve("haarcascade_frontalface_alt_tree.xml");
         return new HaarFaceDetector(cascade.toString(), properties);
     }
