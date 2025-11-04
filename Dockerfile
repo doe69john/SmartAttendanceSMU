@@ -38,7 +38,7 @@ RUN ln -s /app/backend/companion /app/companion \
     || (mkdir -p /app/companion && cp -a /app/backend/companion/. /app/companion)
 
 # JVM defaults suitable for small instances
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:InitialRAMPercentage=25"
+ENV JAVA_OPTS="-XX:InitialRAMPercentage=15 -XX:MaxRAMPercentage=60 -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m -XX:+ExitOnOutOfMemoryError"
 
 # Render scans for a listener on $PORT and expects 0.0.0.0; default is 10000
 EXPOSE 10000
