@@ -41,14 +41,8 @@ public class CompanionInstallerBuilder {
     }
 
     public BuildArtifacts buildInstallers() {
-        Path projectRoot = backendDirectory.getParent();
-        if (projectRoot == null) {
-            throw new IllegalStateException("Unable to resolve project root from " + backendDirectory);
-        }
-        Path companionModule = projectRoot.resolve(COMPANION_MODULE);
-        if (!Files.isDirectory(companionModule)) {
-            throw new IllegalStateException("Companion module not found at " + companionModule.toAbsolutePath());
-        }
+        Path projectRoot = resolveProjectRoot();
+        Path companionModule = resolveCompanionModule(projectRoot);
 
         String version = readCompanionVersion(companionModule);
         runMavenBuild(projectRoot);
@@ -81,6 +75,76 @@ public class CompanionInstallerBuilder {
         }
     }
 
+    private Path resolveProjectRoot() {
+        if (isProjectRoot(backendDirectory)) {
+            return backendDirectory;
+        }
+        Path parent = backendDirectory.getParent();
+        if (parent != null && isProjectRoot(parent)) {
+            return parent;
+        }
+        logger.warn("Falling back to backend directory {} as project root; Maven wrapper may be missing.", backendDirectory);
+        return backendDirectory;
+    }
+
+    private boolean isProjectRoot(Path candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        boolean hasPom = Files.exists(candidate.resolve("pom.xml"));
+        boolean hasWrapper = Files.exists(candidate.resolve("mvnw")) || Files.exists(candidate.resolve("mvnw.cmd"));
+        return hasPom && hasWrapper;
+    }
+
+    private Path resolveCompanionModule(Path projectRoot) {
+        Path direct = projectRoot.resolve(COMPANION_MODULE);
+        if (Files.isDirectory(direct)) {
+            return direct;
+        }
+        Path nested = backendDirectory.resolve(COMPANION_MODULE);
+        if (Files.isDirectory(nested)) {
+            return nested;
+        }
+        throw new IllegalStateException("Companion module not found. Checked "
+                + direct.toAbsolutePath() + " and " + nested.toAbsolutePath());
+    }
+
+    private Path findMavenWrapper(Path projectRoot) {
+        Path wrapper = selectWrapper(projectRoot);
+        if (wrapper != null) {
+            return wrapper;
+        }
+        if (!projectRoot.equals(backendDirectory)) {
+            wrapper = selectWrapper(backendDirectory);
+            if (wrapper != null) {
+                return wrapper;
+            }
+        }
+        Path parent = backendDirectory.getParent();
+        if (parent != null) {
+            wrapper = selectWrapper(parent);
+            if (wrapper != null) {
+                return wrapper;
+            }
+        }
+        throw new IllegalStateException("Maven wrapper not found near " + backendDirectory.toAbsolutePath());
+    }
+
+    private Path selectWrapper(Path directory) {
+        if (directory == null) {
+            return null;
+        }
+        Path preferred = windows ? directory.resolve("mvnw.cmd") : directory.resolve("mvnw");
+        if (Files.exists(preferred)) {
+            return preferred;
+        }
+        Path alternate = windows ? directory.resolve("mvnw") : directory.resolve("mvnw.cmd");
+        if (Files.exists(alternate)) {
+            return alternate;
+        }
+        return null;
+    }
+
     private String readCompanionVersion(Path companionModule) {
         Path versionFile = companionModule.resolve(VERSION_RESOURCE);
         if (!Files.exists(versionFile)) {
@@ -102,10 +166,7 @@ public class CompanionInstallerBuilder {
     }
 
     private void runMavenBuild(Path projectRoot) {
-        Path wrapper = windows ? projectRoot.resolve("mvnw.cmd") : projectRoot.resolve("mvnw");
-        if (!Files.exists(wrapper)) {
-            throw new IllegalStateException("Maven wrapper not found at " + wrapper.toAbsolutePath());
-        }
+        Path wrapper = findMavenWrapper(projectRoot);
         if (!windows) {
             wrapper.toFile().setExecutable(true);
         }
@@ -117,7 +178,7 @@ public class CompanionInstallerBuilder {
             builder = new ProcessBuilder(wrapper.toAbsolutePath().toString(),
                     "-pl", COMPANION_MODULE, "-am", "package", "-DskipTests");
         }
-        builder.directory(projectRoot.toFile());
+        builder.directory(wrapper.getParent().toFile());
         builder.redirectErrorStream(true);
         try {
             Process process = builder.start();
