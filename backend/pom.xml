@@ -14,4 +14,18 @@
     <module>service</module>
     <module>companion</module>
   </modules>
+<dependency>
+    <groupId>org.bytedeco</groupId>
+    <artifactId>opencv-platform</artifactId>
+    <version>4.5.3-1.5.6</version>
+</dependency>
+
+<!-- Add Mac-specific native library -->
+<dependency>
+    <groupId>org.bytedeco</groupId>
+    <artifactId>opencv</artifactId>
+    <version>4.5.3-1.5.6</version>
+    <classifier>macosx-arm64</classifier> <!-- For M1/M2/M3 Macs -->
+    <!-- Use macosx-x86_64 for Intel Macs -->
+</dependency>
 </project>
