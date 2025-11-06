@@ -43,7 +43,7 @@ Key environment options:
   ..\mvnw.cmd spring-boot:run
   ```
 
-- **macOS / Linux (bash/zsh)**
+- **macOS / Linux (bash/zsh)** recommended to use  `deploy` branch version for macOS
   ```bash
   cd backend/service
   export SPRING_PROFILES_ACTIVE=dev
