@@ -9,7 +9,8 @@ import java.util.UUID;
  */
 public class FaceTrack {
     private final String id = UUID.randomUUID().toString();
-    private Rectangle bounds;
+    private Rectangle rawBounds;
+    private Rectangle displayBounds;
     private long lastSeen;
     private boolean updatedThisFrame = false;
     // Stabilization & recognition helpers
@@ -21,34 +22,46 @@ public class FaceTrack {
     private double lastConfidence = 0.0;
 
     public FaceTrack(Rectangle bounds) {
-        this.bounds = bounds;
+        if (bounds != null) {
+            this.rawBounds = new Rectangle(bounds);
+            this.displayBounds = new Rectangle(bounds);
+        }
         touch();
     }
 
     /** Updates this track with a new bounding rectangle. */
     public void update(Rectangle newBounds) {
+        if (newBounds == null) {
+            return;
+        }
+
+        Rectangle normalized = new Rectangle(newBounds);
+        Rectangle previousRaw = this.rawBounds;
+
         // accumulate simple motion based on center delta (use raw new bounds)
-        if (this.bounds != null) {
-            int cx0 = this.bounds.x + this.bounds.width / 2;
-            int cy0 = this.bounds.y + this.bounds.height / 2;
-            int cx1 = newBounds.x + newBounds.width / 2;
-            int cy1 = newBounds.y + newBounds.height / 2;
+        if (previousRaw != null) {
+            int cx0 = previousRaw.x + previousRaw.width / 2;
+            int cy0 = previousRaw.y + previousRaw.height / 2;
+            int cx1 = normalized.x + normalized.width / 2;
+            int cy1 = normalized.y + normalized.height / 2;
             double dx = cx1 - cx0;
             double dy = cy1 - cy0;
             motionAccum += Math.hypot(dx, dy);
         }
-        this.prevBounds = this.bounds;
+
+        this.prevBounds = this.displayBounds;
+        this.rawBounds = normalized;
 
         // Apply mild exponential smoothing to reduce jitter in UI
-        if (this.bounds != null) {
+        if (this.displayBounds != null) {
             double a = 0.35; // smoothing factor for stability vs. responsiveness
-            int sx = (int)Math.round(a * newBounds.x + (1 - a) * this.bounds.x);
-            int sy = (int)Math.round(a * newBounds.y + (1 - a) * this.bounds.y);
-            int sw = (int)Math.round(a * newBounds.width + (1 - a) * this.bounds.width);
-            int sh = (int)Math.round(a * newBounds.height + (1 - a) * this.bounds.height);
-            this.bounds = new Rectangle(sx, sy, Math.max(1, sw), Math.max(1, sh));
+            int sx = (int)Math.round(a * normalized.x + (1 - a) * this.displayBounds.x);
+            int sy = (int)Math.round(a * normalized.y + (1 - a) * this.displayBounds.y);
+            int sw = (int)Math.round(a * normalized.width + (1 - a) * this.displayBounds.width);
+            int sh = (int)Math.round(a * normalized.height + (1 - a) * this.displayBounds.height);
+            this.displayBounds = new Rectangle(sx, sy, Math.max(1, sw), Math.max(1, sh));
         } else {
-            this.bounds = newBounds;
+            this.displayBounds = normalized;
         }
 
         seenFrames++;
@@ -69,9 +82,13 @@ public class FaceTrack {
         return id;
     }
 
-    public Rectangle getBounds() {
-        return bounds;
-    }
+    public Rectangle getBounds() { return getDisplayBounds(); }
+
+    /** Returns the smoothed rectangle suitable for UI overlays. */
+    public Rectangle getDisplayBounds() { return displayBounds; }
+
+    /** Returns the raw rectangle used for matching & gating logic. */
+    public Rectangle getMatchBounds() { return rawBounds; }
 
     public int getSeenFrames() { return seenFrames; }
     public double getMotionAccum() { return motionAccum; }
@@ -79,6 +96,9 @@ public class FaceTrack {
     public long getLastSeen() { return lastSeen; }
     public boolean wasUpdatedThisFrame() { return updatedThisFrame; }
     public void setUpdatedThisFrame(boolean v) { this.updatedThisFrame = v; }
+
+    /** Clears the smoothed display bounds so the overlay can be hidden. */
+    public void clearDisplayBounds() { this.displayBounds = null; }
 
     public String getLabel() { return label; }
     public void setLabel(String label) { this.label = label; }

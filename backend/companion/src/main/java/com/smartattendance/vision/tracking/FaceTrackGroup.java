@@ -36,6 +36,12 @@ public class FaceTrackGroup {
                 tracks.add(nt);
             }
         }
+        // Hide overlays for tracks that were not refreshed this frame so ghost boxes disappear.
+        for (FaceTrack track : tracks) {
+            if (!track.wasUpdatedThisFrame()) {
+                track.clearDisplayBounds();
+            }
+        }
         // Remove stale tracks
         Iterator<FaceTrack> it = tracks.iterator();
         while (it.hasNext()) {
@@ -54,7 +60,7 @@ public class FaceTrackGroup {
         FaceTrack best = null;
         double bestIou = threshold;
         for (FaceTrack t : tracks) {
-            Rectangle tb = t.getBounds();
+            Rectangle tb = t.getMatchBounds();
             double iou = iou(tb, r);
             if (iou > bestIou) { bestIou = iou; best = t; }
         }
@@ -62,6 +68,9 @@ public class FaceTrackGroup {
     }
 
     private static double iou(Rectangle a, Rectangle b) {
+        if (a == null || b == null) {
+            return 0.0;
+        }
         int x1 = Math.max(a.x, b.x);
         int y1 = Math.max(a.y, b.y);
         int x2 = Math.min(a.x + a.width, b.x + b.width);
