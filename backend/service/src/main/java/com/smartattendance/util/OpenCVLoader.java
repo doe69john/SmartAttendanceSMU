@@ -2,8 +2,11 @@ package com.smartattendance.util;
 
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.opencv.opencv_java;
+import org.opencv.core.Core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import nu.pattern.OpenCV;
 
 /**
  * Utility for loading OpenCV native libraries with graceful error handling.
@@ -19,16 +22,54 @@ public final class OpenCVLoader {
      * @return true if loaded successfully; false otherwise
      */
     public static boolean loadOrWarn() {
+        if (loadViaNuPattern()) {
+            return true;
+        }
+        if (loadViaSystemLibrary()) {
+            return true;
+        }
+        return loadViaJavaCpp();
+    }
+
+    private static boolean loadViaNuPattern() {
+        try {
+            OpenCV.loadLocally();
+            log.info("OpenCV native library loaded via nu.pattern.OpenCV.");
+            return true;
+        } catch (UnsatisfiedLinkError | IllegalStateException ex) {
+            log.warn("nu.pattern.OpenCV.loadLocally() failed: {}", ex.toString());
+            return false;
+        } catch (Exception ex) {
+            log.warn("Unexpected error while loading OpenCV with nu.pattern.OpenCV", ex);
+            return false;
+        }
+    }
+
+    private static boolean loadViaSystemLibrary() {
+        try {
+            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            log.info("OpenCV native library loaded via System.loadLibrary.");
+            return true;
+        } catch (UnsatisfiedLinkError ex) {
+            log.warn("System.loadLibrary({}) failed: {}", Core.NATIVE_LIBRARY_NAME, ex.toString());
+            return false;
+        } catch (Exception ex) {
+            log.warn("Unexpected error while loading OpenCV with System.loadLibrary", ex);
+            return false;
+        }
+    }
+
+    private static boolean loadViaJavaCpp() {
         try {
             Loader.load(opencv_java.class);
-            log.info("OpenCV native library loaded successfully.");
+            log.info("OpenCV native library loaded via JavaCPP Loader.");
             return true;
         } catch (UnsatisfiedLinkError e) {
-            log.error("OpenCV native library load failed: {}", e.toString());
+            log.error("OpenCV native library load failed via JavaCPP: {}", e.toString());
             log.error("Vision features will be unavailable until the native libraries are installed.");
             return false;
         } catch (Exception t) {
-            log.error("Unexpected error during OpenCV load", t);
+            log.error("Unexpected error during OpenCV load via JavaCPP", t);
             return false;
         }
     }
