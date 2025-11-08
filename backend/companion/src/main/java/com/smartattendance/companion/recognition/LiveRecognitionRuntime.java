@@ -316,6 +316,9 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         int warmupFrames = Math.max(2, Math.min(minFrames, 5));
         Set<String> liveTrackIds = new HashSet<>();
         for (FaceTrack track : trackGroup.getTracks()) {
+            if (!track.wasUpdatedThisFrame()) {
+                continue;
+            }
             liveTrackIds.add(track.getId());
             if (!trackedFaces.containsKey(track.getId()) && track.getSeenFrames() < warmupFrames) {
                 continue;
@@ -341,10 +344,10 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
 
     private void evaluateTrack(TrackedFace tracked, Mat mat) {
         FaceTrack track = tracked.track();
-        if (track == null || track.getBounds() == null) {
+        if (track == null || !track.wasUpdatedThisFrame() || track.getMatchBounds() == null) {
             return;
         }
-        Rectangle bounds = track.getBounds();
+        Rectangle bounds = track.getMatchBounds();
         if (bounds.width < minFace || bounds.height < minFace) {
             return;
         }

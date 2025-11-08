@@ -384,7 +384,7 @@ public final class SessionWindow implements AutoCloseable {
                 if (face == null || face.track() == null) {
                     continue;
                 }
-                Rectangle bounds = face.track().getBounds();
+                Rectangle bounds = face.track().getDisplayBounds();
                 if (bounds == null) {
                     continue;
                 }
