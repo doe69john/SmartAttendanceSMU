@@ -5,10 +5,11 @@ SmartAttendance is a two-part attendance solution: a React web app that students
 Head into `backend/` or `frontend/` for developer setup guides and environment details.
 This repo uses a simple two-branch workflow:
 
+
 | Branch      | Purpose               | Typical Usage                               |
 |-------------|-----------------------|---------------------------------------------|
-| `main`      | Local development     | Write code, run locally, iterate quickly.   |
-| `deploy`    | Cloud deployment      | Build + deploy to cloud environment.        |
+| `main`      | Local development     | Windows-focused workflows and tooling.      |
+| `deploy`    | Cloud deployment      | macOS/Linux development and cloud releases. |
 
-> Note: The `deploy` branch is the source of truth for production/cloud deployments.  
-> The `main` branch is intended for day-to-day local development.
+> Note: The `deploy` branch is the source of truth for production/cloud deployments.
+> The `main` branch is intended for Windows-specific local development, while macOS users should work from `deploy` for full compatibility.

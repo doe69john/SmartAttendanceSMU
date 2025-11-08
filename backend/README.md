@@ -2,6 +2,7 @@
 
 The backend is a Spring Boot 3 application that exposes the REST API, orchestrates Supabase integrations, and manages the OpenCV-based training pipeline that produces face-recognition models for the native companion app. Inference runs on the companion, but the service still prepares and distributes the trained artifacts.
 
+> **Branch compatibility:** Windows developers should work from the `main` branch, while macOS users must use `deploy` to avoid platform-specific build issues.
 ## Architecture Overview
 
 - **Framework**: Spring Boot 3 / Java 21
@@ -33,6 +34,7 @@ Key environment options:
   ```powershell
   Set-Location backend/service
   $env:SPRING_PROFILES_ACTIVE = "dev"
+  ..\mvnw.cmd clean package
   ..\mvnw.cmd spring-boot:run
   ```
 
@@ -40,13 +42,15 @@ Key environment options:
   ```cmd
   cd backend\service
   set SPRING_PROFILES_ACTIVE=dev
+  ..\mvnw.cmd clean package
   ..\mvnw.cmd spring-boot:run
   ```
 
-- **macOS / Linux (bash/zsh)** recommended to use  `deploy` branch version for macOS
+- **macOS / Linux (bash/zsh)** (macOS users must work from the `deploy` branch for compatibility)
   ```bash
   cd backend/service
   export SPRING_PROFILES_ACTIVE=dev
+  ../mvnw clean package
   ../mvnw spring-boot:run
   ```
 
