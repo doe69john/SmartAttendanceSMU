@@ -2,18 +2,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  Play, 
-  Pause, 
-  Square, 
-  Users, 
-  Camera, 
-  CheckCircle, 
-  AlertCircle, 
+import {
+  Play,
+  Pause,
+  Square,
+  Users,
+  CheckCircle,
+  AlertCircle,
   Clock,
   Search,
   User,
@@ -79,23 +76,6 @@ interface RecognitionLogEntry {
   action: RecognitionLogAction;
 }
 
-interface RecognitionResultPayload {
-  studentId: string;
-  student: StudentViewModel;
-  confidence: number;
-  timestamp: string;
-  capturedFace: string;
-}
-
-interface ConfirmationDialog {
-  open: boolean;
-  capturedFace?: string;
-  confidence: number;
-  suggestedStudents: StudentViewModel[];
-  onConfirm: (studentId: string, notes?: string) => void;
-  onDeny: () => void;
-}
-
 const normalizeSessionStatus = (status?: string | null): SessionLifecycleStatus => {
   switch ((status ?? '').toLowerCase()) {
     case 'active':
@@ -131,22 +111,9 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
   const [attendance, setAttendance] = useState<AttendanceRecordViewModel[]>([]);
   const [sessionStatus, setSessionStatus] = useState<SessionLifecycleStatus>('scheduled');
   const [recognitionLogs, setRecognitionLogs] = useState<RecognitionLogEntry[]>([]);
-  const [confirmationDialog, setConfirmationDialog] = useState<ConfirmationDialog>({
-    open: false,
-    confidence: 0,
-    suggestedStudents: [],
-    onConfirm: () => {},
-    onDeny: () => {}
-  });
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const recognitionWorkerRef = useRef<Worker | null>(null);
-
-  const HIGH_CONFIDENCE_THRESHOLD = 0.85;
-  const LOW_CONFIDENCE_THRESHOLD = 0.60;
+  const [eventStreamConnected, setEventStreamConnected] = useState<boolean>(false);
 
   const studentsRef = useRef<StudentViewModel[]>([]);
 
@@ -310,11 +277,15 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
   }, []);
 
   const setupRealtimeUpdates = useCallback(() => {
+    setEventStreamConnected(true);
     return subscribeToSessionEvents(sessionId, {
       onAttendance: handleAttendanceEvent,
       onSessionAction: handleSessionAction,
       onRecognition: handleRecognitionEvent,
-      onError: () => console.warn('Session events stream disconnected'),
+      onError: () => {
+        console.warn('Session events stream disconnected');
+        setEventStreamConnected(false);
+      },
     });
   }, [sessionId, handleAttendanceEvent, handleRecognitionEvent, handleSessionAction]);
 
@@ -329,7 +300,7 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
     initialize();
     return () => {
       unsubscribe?.();
-      stopFaceRecognition();
+      setEventStreamConnected(false);
     };
   }, [sessionId, loadSessionData, loadStudents, loadAttendance, setupRealtimeUpdates]);
 
@@ -338,7 +309,6 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
       await manageSession(sessionId, 'start', profile?.id);
       setSessionStatus('active');
       await loadAttendance();
-      await startFaceRecognition();
       toast({
         title: 'Session Started',
         description: 'Live attendance tracking is now active'
@@ -353,7 +323,6 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
     try {
       await manageSession(sessionId, 'pause', profile?.id);
       setSessionStatus('scheduled');
-      stopFaceRecognition();
       toast({
         title: 'Session Paused',
         description: 'Attendance tracking paused'
@@ -368,7 +337,6 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
     try {
       await manageSession(sessionId, 'stop', profile?.id);
       setSessionStatus('completed');
-      stopFaceRecognition();
       await loadAttendance();
       toast({
         title: 'Session Ended',
@@ -378,140 +346,6 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
       console.error('Failed to end session:', error);
       showApiError(error, 'Failed to end session');
     }
-  };
-
-  const startFaceRecognition = async () => {
-    try {
-      // Start camera
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480 }
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      
-      // Start recognition loop
-      startRecognitionLoop();
-      
-    } catch (error) {
-      console.error('Failed to start camera:', error);
-      toast({
-        title: "Camera Error",
-        description: "Failed to access camera",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const stopFaceRecognition = () => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-    }
-    
-    if (recognitionWorkerRef.current) {
-      recognitionWorkerRef.current.terminate();
-      recognitionWorkerRef.current = null;
-    }
-  };
-
-  const startRecognitionLoop = () => {
-    const recognizeLoop = () => {
-      if (sessionStatus !== 'active') return;
-      
-      processFrameForRecognition();
-      setTimeout(recognizeLoop, 2000); // Process every 2 seconds
-    };
-    
-    recognizeLoop();
-  };
-
-  const processFrameForRecognition = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) return;
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    
-    // Simulate face recognition (replace with actual implementation)
-    const recognitionResult = await simulateRecognition(canvas);
-
-    if (recognitionResult) {
-      handleRecognitionResult(recognitionResult);
-    }
-  };
-
-  const simulateRecognition = async (canvas: HTMLCanvasElement): Promise<RecognitionResultPayload | null> => {
-    // Simulate recognition processing
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Simulate random recognition result for demo
-    if (Math.random() > 0.7 && students.length > 0) {
-      const randomStudent = students[Math.floor(Math.random() * students.length)];
-      const confidence = 0.3 + Math.random() * 0.7; // 0.3 to 1.0
-      
-        return {
-          studentId: randomStudent.id,
-          student: randomStudent,
-          confidence,
-          timestamp: new Date().toISOString(),
-          capturedFace: canvas.toDataURL('image/jpeg', 0.7)
-        };
-    }
-
-    return null;
-  };
-
-  const handleRecognitionResult = async (result: RecognitionResultPayload) => {
-    const { studentId, student, confidence, capturedFace, timestamp } = result;
-
-    // Add to recognition logs
-    const logEntry: RecognitionLogEntry = {
-      id: Date.now(),
-      timestamp,
-      studentName: student.fullName,
-      confidence,
-      action: (confidence >= HIGH_CONFIDENCE_THRESHOLD
-        ? 'auto_marked'
-        : confidence >= LOW_CONFIDENCE_THRESHOLD
-          ? 'manual_confirm'
-          : 'ignored') as RecognitionLogAction
-    };
-    
-    setRecognitionLogs(prev => [logEntry, ...prev.slice(0, 49)]); // Keep last 50 logs
-    
-    if (confidence >= HIGH_CONFIDENCE_THRESHOLD) {
-      // High confidence - automatic marking
-      await markAttendance(studentId, 'present', confidence, 'Automatic recognition');
-    } else if (confidence >= LOW_CONFIDENCE_THRESHOLD) {
-      // Low confidence - manual confirmation required
-      showConfirmationDialog(capturedFace, confidence, [student]);
-    }
-    // Below low threshold - ignored
-  };
-
-  const showConfirmationDialog = (capturedFace: string, confidence: number, suggestedStudents: StudentViewModel[]) => {
-    setConfirmationDialog({
-      open: true,
-      capturedFace,
-      confidence,
-      suggestedStudents,
-      onConfirm: async (studentId: string, notes?: string) => {
-        await markAttendance(studentId, 'present', confidence, notes || 'Manual confirmation');
-        setConfirmationDialog(prev => ({ ...prev, open: false }));
-      },
-      onDeny: () => {
-        setConfirmationDialog(prev => ({ ...prev, open: false }));
-      }
-    });
   };
 
   const markAttendance = async (studentId: string, status: AttendanceStatus, confidence?: number, notes?: string) => {
@@ -691,29 +525,52 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Camera Feed & Recognition */}
         <div className="lg:col-span-2 space-y-6">
           {sessionStatus === 'active' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Camera className="w-5 h-5" />
-                  Live Recognition Feed
+                  <CheckCircle className="w-5 h-5" />
+                  Companion Connection
                 </CardTitle>
+                <CardDescription>
+                  Monitor live updates from the companion capture app.
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    className="w-full h-full object-cover"
-                  />
-                  <canvas
-                    ref={canvasRef}
-                    className="absolute inset-0 w-full h-full"
-                    style={{ display: 'none' }}
-                  />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full ${eventStreamConnected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}
+                      aria-hidden="true"
+                    />
+                    <span>
+                      {eventStreamConnected
+                        ? 'Connected to session events'
+                        : 'Connecting to session events...'}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Most recent recognition event</p>
+                    {recognitionLogs.length > 0 ? (
+                      <div className="p-3 border rounded-lg text-sm space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">{recognitionLogs[0].studentName}</span>
+                          <Badge variant={recognitionLogs[0].action === 'auto_marked' ? 'default' : recognitionLogs[0].action === 'manual_confirm' ? 'secondary' : 'outline'}>
+                            {Math.round(recognitionLogs[0].confidence * 100)}%
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{new Date(recognitionLogs[0].timestamp).toLocaleTimeString()}</span>
+                          <span className="capitalize">{recognitionLogs[0].action.replace('_', ' ')}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Recognition events from the companion app will appear here.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -851,95 +708,6 @@ export const LiveSessionDashboard = ({ sessionId }: { sessionId: string }) => {
         </div>
       </div>
 
-      {/* Manual Confirmation Dialog */}
-      <Dialog open={confirmationDialog.open} onOpenChange={(open) => 
-        setConfirmationDialog(prev => ({ ...prev, open }))
-      }>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Student Identity</DialogTitle>
-            <DialogDescription>
-              Low confidence recognition detected. Please confirm the student's identity.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {confirmationDialog.capturedFace && (
-              <div className="aspect-square w-32 mx-auto rounded-lg overflow-hidden">
-                <img
-                  src={confirmationDialog.capturedFace}
-                  alt="Captured face"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Confidence:</span>
-                <Badge variant="secondary">
-                  {Math.round(confirmationDialog.confidence * 100)}%
-                </Badge>
-              </div>
-              <Progress value={confirmationDialog.confidence * 100} />
-            </div>
-            
-            {confirmationDialog.suggestedStudents.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Suggested Student:</p>
-                <div className="p-2 rounded border">
-                  <p className="font-medium">{confirmationDialog.suggestedStudents[0].fullName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {confirmationDialog.suggestedStudents[0].studentNumber ?? 'N/A'}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            <Select onValueChange={(studentId) => {
-              const student = students.find(s => s.id === studentId);
-              if (student) {
-                confirmationDialog.onConfirm(studentId, 'Manual confirmation after low confidence detection');
-              }
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Or select different student..." />
-              </SelectTrigger>
-              <SelectContent>
-                {students.map((student) => (
-                  <SelectItem key={student.id} value={student.id}>
-                    {student.fullName} ({student.studentNumber ?? 'N/A'})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <div className="flex gap-2 pt-4">
-              <Button
-                onClick={() => {
-                  if (confirmationDialog.suggestedStudents.length > 0) {
-                    confirmationDialog.onConfirm(
-                      confirmationDialog.suggestedStudents[0].id,
-                      'Confirmed suggested student'
-                    );
-                  }
-                }}
-                className="flex-1"
-                disabled={confirmationDialog.suggestedStudents.length === 0}
-              >
-                Confirm
-              </Button>
-              <Button
-                variant="outline"
-                onClick={confirmationDialog.onDeny}
-                className="flex-1"
-              >
-                Deny
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
