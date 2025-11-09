@@ -1,7 +1,6 @@
 package com.smartattendance.companion.recognition;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -14,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -27,7 +27,6 @@ import java.util.function.Consumer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.sarxos.webcam.Webcam;
 import com.smartattendance.companion.CompanionSettings;
 import com.smartattendance.companion.SessionState;
 import com.smartattendance.config.AttendanceProperties;
@@ -84,7 +83,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         return thread;
     });
 
-    private Webcam webcam;
+    private volatile FrameSource frameSource;
     private SessionWindow window;
     private HaarFaceDetector detector;
     private Recognizer recognizer;
@@ -144,8 +143,8 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
             detector = new HaarFaceDetector(resolveCascadePath(), config);
             recognizer = loadRecognizer();
             trackGroup = new FaceTrackGroup(TimeUnit.SECONDS.toMillis(4));
-            webcam = openCamera();
-            window = new SessionWindow(webcam);
+            frameSource = openFrameSource();
+            window = new SessionWindow(frameSource);
             window.open();
             window.setManualMarkListener(this::handleManualRosterMark);
             window.setEndSessionListener(this::handleEndSessionRequest);
@@ -165,6 +164,10 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
             executor.submit(this::loop);
         } catch (Exception ex) {
             log.error("Failed to start recognition runtime: {}", ex.getMessage(), ex);
+            if (frameSource != null) {
+                frameSource.close();
+                frameSource = null;
+            }
             running.set(false);
         }
     }
@@ -200,19 +203,14 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         }
     }
 
-    private Webcam openCamera() {
-        List<Webcam> webcams = Webcam.getWebcams();
-        if (webcams.isEmpty()) {
-            throw new IllegalStateException("No webcams detected on this device");
+    private FrameSource openFrameSource() {
+        AttendanceProperties.Camera camera = config.camera();
+        int index = camera != null ? camera.index() : 0;
+        double fps = camera != null ? camera.fps() : 30.0d;
+        if (isArm64Mac()) {
+            return new OpenCvFrameSource(index, fps);
         }
-        int index = Math.max(0, Math.min(config.camera().index(), webcams.size() - 1));
-        Webcam cam = webcams.get(index);
-        cam.setCustomViewSizes(new Dimension(1280, 720), new Dimension(960, 540));
-        cam.setViewSize(new Dimension(960, 540));
-        if (!cam.isOpen()) {
-            cam.open(true);
-        }
-        return cam;
+        return new WebcamFrameSource(index);
     }
 
     private String resolveCascadePath() {
@@ -222,6 +220,12 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         }
         Path fallback = config.directories().modelDir().resolve("haarcascade_frontalface_default.xml");
         return Files.exists(fallback) ? fallback.toAbsolutePath().toString() : null;
+    }
+
+    private boolean isArm64Mac() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        return os.contains("mac") && (arch.contains("arm64") || arch.contains("aarch64"));
     }
 
     private Recognizer loadRecognizer() throws IOException {
@@ -248,9 +252,12 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         long frameIntervalMs = Math.max(20L, Math.round(1000.0 / Math.max(15.0, config.camera().fps())));
         while (running.get()) {
             try {
-                BufferedImage image = webcam.getImage();
+                BufferedImage image = frameSource != null ? frameSource.getImage() : null;
                 if (image == null) {
                     continue;
+                }
+                if (window != null) {
+                    window.updateFrame(image);
                 }
                 processFrame(image);
                 Thread.sleep(frameIntervalMs);
@@ -1024,8 +1031,9 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         if (window != null) {
             window.close();
         }
-        if (webcam != null && webcam.isOpen()) {
-            webcam.close();
+        if (frameSource != null) {
+            frameSource.close();
+            frameSource = null;
         }
         eventBus.publish(new RecognitionEvent(
                 RecognitionEventType.CAMERA_STOPPED,
