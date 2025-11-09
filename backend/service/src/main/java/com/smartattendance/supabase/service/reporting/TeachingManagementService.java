@@ -281,6 +281,21 @@ public class TeachingManagementService {
     }
 
     @Transactional
+    public SectionSummaryDto createSectionWithProfessor(CreateSectionRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+        UUID professorId = request.getProfessorId();
+        if (professorId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "professorId is required");
+        }
+        if (!professorJdbcRepository.professorExists(professorId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Professor not found");
+        }
+        return createSection(professorId, request);
+    }
+
+    @Transactional
     public CourseSummaryDto updateCourse(UUID courseId, CreateCourseRequest request) {
         if (courseId == null) {
             throw new IllegalArgumentException("courseId is required");
