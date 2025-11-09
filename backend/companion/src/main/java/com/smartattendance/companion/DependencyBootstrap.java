@@ -78,7 +78,6 @@ final class DependencyBootstrap {
         artifacts.add(new Artifact("org.bytedeco", "opencv", "4.9.0-1.5.10", null));
         artifacts.add(new Artifact("org.bytedeco", "openblas", "0.3.26-1.5.10", null));
         artifacts.add(new Artifact("org.bytedeco", "javacpp", "1.5.10", null));
-        artifacts.add(new Artifact("org.bytedeco", "ffmpeg", "7.1-1.5.10", null));
         artifacts.add(new Artifact("com.fasterxml.jackson.core", "jackson-databind", "2.18.2", null));
         artifacts.add(new Artifact("com.fasterxml.jackson.core", "jackson-core", "2.18.2", null));
         artifacts.add(new Artifact("com.fasterxml.jackson.core", "jackson-annotations", "2.18.2", null));
@@ -96,7 +95,6 @@ final class DependencyBootstrap {
                 new Artifact("org.bytedeco", "opencv", "4.9.0-1.5.10", classifier),
                 new Artifact("org.bytedeco", "openblas", "0.3.26-1.5.10", classifier),
                 new Artifact("org.bytedeco", "javacpp", "1.5.10", classifier),
-                new Artifact("org.bytedeco", "ffmpeg", "7.1-1.5.10", classifier)
         );
     }
 
