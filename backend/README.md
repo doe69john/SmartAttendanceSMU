@@ -47,6 +47,7 @@ Key environment options:
   ```bash
   cd backend/service
   export SPRING_PROFILES_ACTIVE=dev
+  chmod 777 ../mvnw
   ../mvnw spring-boot:run
   ```
 
