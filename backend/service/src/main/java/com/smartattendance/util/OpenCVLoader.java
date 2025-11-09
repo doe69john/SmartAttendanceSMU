@@ -9,7 +9,6 @@ import org.opencv.core.Core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import nu.pattern.OpenCV;
 
 /**
  * Utility for loading OpenCV native libraries with graceful error handling.
