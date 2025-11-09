@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 
+import com.smartattendance.util.OpenCVLoader;
 import com.smartattendance.vision.HaarFaceDetector;
 import com.smartattendance.vision.ModelManager;
 
@@ -72,7 +73,9 @@ public class VisionConfiguration {
 
     @Bean
     public HaarFaceDetector haarFaceDetector() {
-        nu.pattern.OpenCV.loadLocally();
+        if (!OpenCVLoader.loadOrWarn()) {
+            throw new IllegalStateException("OpenCV native library unavailable; Haar detector cannot initialize");
+        }
         Path cascade = properties.directories().modelDir().resolve("haarcascade_frontalface_alt_tree.xml");
         return new HaarFaceDetector(cascade.toString(), properties);
     }
