@@ -106,6 +106,8 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
     private int attemptIntervalMs;
     private double blurThreshold;
     private int maxManualPrompts = 3;
+    private int preprocessWidth = 200;
+    private int preprocessHeight = 200;
 
     public LiveRecognitionRuntime(SessionState state,
                                   AttendanceProperties config,
@@ -197,6 +199,14 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         blurThreshold = live != null ? live.blurVarianceThreshold() : 80.0;
         if (!Double.isFinite(blurThreshold) || blurThreshold <= 0.0d) {
             blurThreshold = 80.0;
+        }
+        AttendanceProperties.Preprocessing preprocessing = config.preprocessing();
+        if (preprocessing != null) {
+            preprocessWidth = Math.max(1, preprocessing.width());
+            preprocessHeight = Math.max(1, preprocessing.height());
+        } else {
+            preprocessWidth = 200;
+            preprocessHeight = 200;
         }
     }
 
@@ -366,7 +376,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         }
         Mat face = new Mat(mat, roiRect);
         try {
-            Imgproc.resize(face, face, new Size(200, 200));
+            Imgproc.resize(face, face, new Size(preprocessWidth, preprocessHeight));
             Recognizer.Prediction prediction = recognizer.recognize(face);
             if (prediction == null) {
                 return;
