@@ -17,7 +17,7 @@ import LiveSession from "./pages/LiveSession";
 import ProfessorCourses from "./pages/ProfessorCourses";
 import ProfessorSections from "./pages/ProfessorSections";
 import Reports from "./pages/Reports";
-import AdminCourses from "./pages/admin/AdminCourses";
+import { EnhancedCourseManagement } from "./pages/admin/EnhancedCourseManagement";
 import AdminSections from "./pages/admin/AdminSections";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminReports from "./pages/admin/AdminReports";
@@ -49,7 +49,14 @@ const App = () => (
                 <Route path="sections" element={<ProtectedRoute requiredRole="professor"><ProfessorSections /></ProtectedRoute>} />
                 <Route path="live-session" element={<ProtectedRoute requiredRole="professor"><LiveSession /></ProtectedRoute>} />
                 <Route path="reports" element={<ProtectedRoute requiredRole="professor"><Reports /></ProtectedRoute>} />
-                <Route path="admin-courses" element={<ProtectedRoute requiredRole="admin"><AdminCourses /></ProtectedRoute>} />
+                <Route
+                  path="admin-courses"
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <EnhancedCourseManagement />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="admin-sections" element={<ProtectedRoute requiredRole="admin"><AdminSections /></ProtectedRoute>} />
                 <Route path="admin-users" element={<ProtectedRoute requiredRole="admin"><AdminUsers /></ProtectedRoute>} />
                 <Route path="admin-reports" element={<ProtectedRoute requiredRole="admin"><AdminReports /></ProtectedRoute>} />

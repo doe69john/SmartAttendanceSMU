@@ -8,6 +8,7 @@ import {
   MapPin,
   Pencil,
   PieChart,
+  Plus,
   Search,
   Trash2,
   Users,
@@ -17,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { APP_CONFIG } from '@/config/constants';
 import {
   ApiError,
+  createAdminSection,
   deleteSection,
   downloadSectionReport,
   fetchAdminSections,
@@ -290,6 +292,9 @@ function StudentSelector({
   }, [directory]);
 
   const handleSelect = (student: StudentProfile) => {
+    if (disabled) {
+      return;
+    }
     if (!student.id) {
       return;
     }
@@ -332,9 +337,11 @@ function StudentSelector({
                   key={student.id ?? `${student.fullName}-${student.email}`}
                   type="button"
                   onClick={() => handleSelect(student)}
+                  disabled={disabled}
                   className={cn(
                     'flex w-full items-center justify-between px-4 py-3 text-left text-sm transition',
-                    isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted/60',
+                    disabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-muted/60',
+                    isSelected ? 'bg-primary/10 text-primary' : null,
                   )}
                 >
                   <div className="flex flex-col">
@@ -437,6 +444,9 @@ const AdminSections = () => {
     format: 'csv' | 'xlsx';
   } | null>(null);
   const [professorPopoverOpen, setProfessorPopoverOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createSelectedStudents, setCreateSelectedStudents] = useState<StudentProfile[]>([]);
+  const [createProfessorPopoverOpen, setCreateProfessorPopoverOpen] = useState(false);
 
   const normalizedSearch = sectionSearch.trim();
 
@@ -592,6 +602,20 @@ const AdminSections = () => {
     },
   });
 
+  const createSectionForm = useForm<SectionFormValues>({
+    defaultValues: {
+      courseId: '',
+      sectionCode: '',
+      professorId: '',
+      dayOfWeek: '',
+      startTime: '',
+      endTime: '',
+      location: '',
+      maxStudents: undefined,
+      lateThresholdMinutes: APP_CONFIG.lateThresholdMinutes,
+    },
+  });
+
   const editSectionForm = useForm<SectionFormValues>({
     defaultValues: {
       courseId: '',
@@ -606,6 +630,10 @@ const AdminSections = () => {
     },
   });
 
+  const createCourseId = createSectionForm.watch('courseId');
+  const createSectionCodeValue = normalizeSectionCodeValue(createSectionForm.watch('sectionCode'));
+  const createStartTime = createSectionForm.watch('startTime');
+  const createEndTime = createSectionForm.watch('endTime');
   const editCourseId = editSectionForm.watch('courseId');
   const editProfessorId = editSectionForm.watch('professorId');
   const editSectionCodeValue = normalizeSectionCodeValue(editSectionForm.watch('sectionCode'));
@@ -613,6 +641,14 @@ const AdminSections = () => {
   const editEndTime = editSectionForm.watch('endTime');
   const sectionBeingEditedCourseId = sectionBeingEdited?.courseId ?? '';
   const sectionBeingEditedCode = normalizeSectionCodeValue(sectionBeingEdited?.sectionCode);
+
+  const createSectionCodeOptions = useMemo(() => {
+    const used = createCourseId ? sectionCodesByCourse.get(createCourseId) : undefined;
+    return SECTION_CODE_OPTIONS.map((code) => ({
+      code,
+      disabled: Boolean(used?.has(code)),
+    }));
+  }, [createCourseId, sectionCodesByCourse]);
 
   const editSectionCodeOptions = useMemo(() => {
     const courseKey = editCourseId || sectionBeingEditedCourseId;
@@ -623,10 +659,32 @@ const AdminSections = () => {
     }));
   }, [editCourseId, editSectionCodeValue, sectionBeingEditedCourseId, sectionCodesByCourse]);
 
+  const allCreateCodesUsed = useMemo(
+    () => createSectionCodeOptions.every((option) => option.disabled),
+    [createSectionCodeOptions],
+  );
+
   const allEditCodesUsed = useMemo(
     () => editSectionCodeOptions.every((option) => option.disabled),
     [editSectionCodeOptions],
   );
+
+  useEffect(() => {
+    if (!createStartTime || !createEndTime) {
+      return;
+    }
+    void createSectionForm.trigger(['startTime', 'endTime']);
+  }, [createStartTime, createEndTime, createSectionForm]);
+
+  useEffect(() => {
+    if (!createCourseId || !createSectionCodeValue) {
+      return;
+    }
+    const usedCodes = sectionCodesByCourse.get(createCourseId);
+    if (usedCodes?.has(createSectionCodeValue)) {
+      createSectionForm.setValue('sectionCode', '', { shouldValidate: true, shouldDirty: true });
+    }
+  }, [createCourseId, createSectionCodeValue, createSectionForm, sectionCodesByCourse]);
 
   useEffect(() => {
     if (!editStartTime || !editEndTime) {
@@ -804,7 +862,68 @@ const AdminSections = () => {
     }
   }, [editDialogOpen, sectionBeingEdited, editRosterData, editRosterHydrated, editRosterFetching]);
 
+  const createSectionFormRef = useRef<HTMLFormElement | null>(null);
   const editSectionFormRef = useRef<HTMLFormElement | null>(null);
+
+  const handleCreateDialogChange = useCallback(
+    (open: boolean) => {
+      setCreateDialogOpen(open);
+      if (!open) {
+        createSectionForm.reset({
+          courseId: '',
+          sectionCode: '',
+          professorId: '',
+          dayOfWeek: '',
+          startTime: '',
+          endTime: '',
+          location: '',
+          maxStudents: undefined,
+          lateThresholdMinutes: APP_CONFIG.lateThresholdMinutes,
+        });
+        setCreateSelectedStudents([]);
+        setCreateProfessorPopoverOpen(false);
+      }
+    },
+    [createSectionForm],
+  );
+
+  const createSectionMutation = useMutation({
+    mutationFn: async (values: SectionFormValues) => {
+      const studentIds = createSelectedStudents
+        .map((student) => student.id)
+        .filter((id): id is string => Boolean(id));
+      const normalizedSectionCode = normalizeSectionCodeValue(values.sectionCode);
+      const payload: CreateSectionRequest & { studentIds?: string[] } = {
+        courseId: values.courseId,
+        professorId: values.professorId ? values.professorId : undefined,
+        sectionCode: normalizedSectionCode,
+        dayOfWeek: Number(values.dayOfWeek),
+        startTime: values.startTime,
+        endTime: values.endTime,
+        location: values.location?.trim() || undefined,
+        maxStudents: values.maxStudents,
+        lateThresholdMinutes: values.lateThresholdMinutes ?? APP_CONFIG.lateThresholdMinutes,
+        studentIds: studentIds.length ? studentIds : undefined,
+      };
+      return createAdminSection(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-sections'] });
+      toast({
+        title: 'Section created',
+        description: 'The new section is ready for scheduling sessions.',
+      });
+      handleCreateDialogChange(false);
+    },
+    onError: (error) => handleApiError(error, 'Failed to create section'),
+  });
+
+  const handleCreateSubmit = useCallback(
+    (values: SectionFormValues) => {
+      createSectionMutation.mutate(values);
+    },
+    [createSectionMutation],
+  );
 
   const editSectionMutation = useMutation({
     mutationFn: async ({ sectionId, request, addIds, removeIds }: SectionUpdatePayload) => {
@@ -996,6 +1115,7 @@ const AdminSections = () => {
     );
   }
 
+  const isCreateSubmitting = createSectionMutation.isPending;
   const isEditSubmitting = editSectionMutation.isPending;
   const isDeletePending = deleteSectionMutation.isPending;
 
@@ -1020,14 +1140,385 @@ const AdminSections = () => {
             />
           </div>
 
-          {sectionsFetching ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Refreshing sections…
-            </div>
-          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            {sectionsFetching ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Refreshing sections…
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              className="btn-gradient w-full gap-2 sm:w-auto"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add section
+            </Button>
+          </div>
         </div>
       </header>
+
+      <Dialog open={createDialogOpen} onOpenChange={handleCreateDialogChange}>
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Add section</DialogTitle>
+            <DialogDescription>
+              Assign a professor, schedule, and initial roster to create a new course section.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...createSectionForm}>
+            <form
+              ref={createSectionFormRef}
+              onSubmit={createSectionForm.handleSubmit(handleCreateSubmit, handleSectionFormInvalid)}
+              className="space-y-8"
+            >
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+                <div className="space-y-6">
+                  <FormField
+                    control={createSectionForm.control}
+                    name="courseId"
+                    rules={{ required: 'Course is required' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Course</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={coursesLoading || courseOptions.length === 0 || isCreateSubmitting}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={
+                                  coursesLoading
+                                    ? 'Loading courses...'
+                                    : courseOptions.length === 0
+                                      ? 'No courses available'
+                                      : 'Select course'
+                                }
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {courseOptions.length === 0 ? (
+                              <SelectItem value="__no-course" disabled>
+                                No courses available
+                              </SelectItem>
+                            ) : (
+                              courseOptions.map((course) => (
+                                <SelectItem key={course.id} value={course.id}>
+                                  {course.label}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createSectionForm.control}
+                    name="professorId"
+                    rules={{ required: 'Professor is required' }}
+                    render={({ field }) => {
+                      const selectedProfessor = professors.find((professor) => professor.id === field.value);
+                      return (
+                        <FormItem>
+                          <FormLabel>Assigned professor</FormLabel>
+                          <Popover open={createProfessorPopoverOpen} onOpenChange={setCreateProfessorPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                className="w-full justify-between"
+                                disabled={isCreateSubmitting}
+                              >
+                                {selectedProfessor ? (
+                                  <span className="truncate text-left">
+                                    {selectedProfessor.fullName}
+                                    {selectedProfessor.email ? (
+                                      <span className="block text-xs text-muted-foreground">
+                                        {selectedProfessor.email}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                ) : (
+                                  'Select professor'
+                                )}
+                                <Search className="ml-2 h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search professors..." />
+                                <CommandList>
+                                  <CommandEmpty>No professors found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {professors.map((professor) => (
+                                      <CommandItem
+                                        key={professor.id}
+                                        value={professor.fullName ?? professor.email ?? professor.staffId ?? ''}
+                                        onSelect={() => {
+                                          field.onChange(professor.id ?? '');
+                                          setCreateProfessorPopoverOpen(false);
+                                        }}
+                                      >
+                                        <div>
+                                          <p className="font-medium">{professor.fullName ?? 'Unnamed professor'}</p>
+                                          {professor.email ? (
+                                            <p className="text-xs text-muted-foreground">{professor.email}</p>
+                                          ) : null}
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={createSectionForm.control}
+                      name="sectionCode"
+                      rules={{ required: 'Section code is required' }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Section code</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={
+                              isCreateSubmitting || !createCourseId || (allCreateCodesUsed && !field.value)
+                            }
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    !createCourseId
+                                      ? 'Select a course first'
+                                      : allCreateCodesUsed && !field.value
+                                        ? 'All section codes in use'
+                                        : 'Select section code'
+                                  }
+                                />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {createSectionCodeOptions.map((option) => (
+                                <SelectItem key={option.code} value={option.code} disabled={option.disabled}>
+                                  {option.code}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={createSectionForm.control}
+                      name="dayOfWeek"
+                      rules={{ required: 'Meeting day is required' }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Meeting day</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={isCreateSubmitting}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select day" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {WEEKDAY_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={createSectionForm.control}
+                      name="startTime"
+                      rules={{
+                        required: 'Start time is required',
+                        validate: () => validateTimeOrder(createStartTime, createEndTime),
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Start time</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              value={field.value}
+                              onChange={field.onChange}
+                              disabled={isCreateSubmitting}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={createSectionForm.control}
+                      name="endTime"
+                      rules={{
+                        required: 'End time is required',
+                        validate: () => validateTimeOrder(createStartTime, createEndTime),
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>End time</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              value={field.value}
+                              onChange={field.onChange}
+                              disabled={isCreateSubmitting}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={createSectionForm.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Optional classroom or meeting link"
+                            value={field.value ?? ''}
+                            onChange={field.onChange}
+                            disabled={isCreateSubmitting}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={createSectionForm.control}
+                      name="maxStudents"
+                      rules={{
+                        validate: (value) => validateCapacity(value ?? null) ?? true,
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Capacity (optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={field.value ?? ''}
+                              onChange={(event) => {
+                                const value = Number.parseInt(event.target.value, 10);
+                                field.onChange(Number.isNaN(value) ? undefined : value);
+                              }}
+                              disabled={isCreateSubmitting}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={createSectionForm.control}
+                      name="lateThresholdMinutes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Late threshold (minutes)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={240}
+                              value={field.value ?? APP_CONFIG.lateThresholdMinutes}
+                              onChange={(event) => {
+                                const value = Number.parseInt(event.target.value, 10);
+                                field.onChange(
+                                  Number.isNaN(value) ? APP_CONFIG.lateThresholdMinutes : value,
+                                );
+                              }}
+                              disabled={isCreateSubmitting}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4 lg:p-6">
+                  <div>
+                    <h3 className="text-base font-semibold">Pre-enroll students</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Search and select students to enroll immediately after the section is created.
+                    </p>
+                  </div>
+                  <StudentSelector
+                    selected={createSelectedStudents}
+                    onChange={setCreateSelectedStudents}
+                    disabled={isCreateSubmitting}
+                    helperText="Selected students will be added to the roster right away."
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full lg:w-auto"
+                  onClick={() => handleCreateDialogChange(false)}
+                  disabled={isCreateSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" className="btn-gradient w-full lg:w-auto" disabled={isCreateSubmitting}>
+                  {isCreateSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating section
+                    </>
+                  ) : (
+                    'Create section'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
       <section className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-lg shadow-primary/5">
         {sectionsLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
