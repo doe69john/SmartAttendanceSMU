@@ -72,12 +72,6 @@
       <artifactId>hibernate-community-dialects</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.openpnp</groupId>
-      <artifactId>opencv</artifactId>
-      <version>4.9.0-0</version>
-    </dependency>
-    
-    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-devtools</artifactId>
       <scope>runtime</scope>
@@ -96,7 +90,7 @@
     <dependency>
       <groupId>org.bytedeco</groupId>
       <artifactId>opencv-platform</artifactId>
-      <version>4.5.3-1.5.6</version>
+      <version>4.9.0-1.5.10</version>
     </dependency>
     <dependency>
       <groupId>com.github.sarxos</groupId>

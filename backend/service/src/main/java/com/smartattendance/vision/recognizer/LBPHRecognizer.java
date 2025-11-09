@@ -20,13 +20,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.smartattendance.config.AttendanceProperties;
 import com.smartattendance.vision.preprocess.ImageQuality;
+import com.smartattendance.util.OpenCVLoader;
 
 /**
  * LBPH-based recognizer with incremental update support.
  */
 public class LBPHRecognizer implements Recognizer {
     private static final Logger log = LoggerFactory.getLogger(LBPHRecognizer.class);
-    private LBPHFaceRecognizer recognizer = LBPHFaceRecognizer.create();
+    private static final Object NATIVE_LOCK = new Object();
+    private static volatile boolean nativeLoaded = false;
+
+    private LBPHFaceRecognizer recognizer = createDefaultRecognizer();
     private final Map<Integer, String> labels = new HashMap<>();
     private final Map<String, Integer> reverse = new HashMap<>();
     private final FaceImageProcessor processor;
@@ -68,19 +72,49 @@ public class LBPHRecognizer implements Recognizer {
                 int neighbors = lbph != null ? lbph.neighbors() : 8;
                 int gridX = lbph != null ? lbph.gridX() : 8;
                 int gridY = lbph != null ? lbph.gridY() : 8;
-                this.recognizer = LBPHFaceRecognizer.create(radius, neighbors, gridX, gridY, Double.MAX_VALUE);
+                this.recognizer = createRecognizer(radius, neighbors, gridX, gridY, Double.MAX_VALUE);
                 if (lbph != null) {
                     log.info("Configured LBPH with radius={}, neighbors={}, gridX={}, gridY={} from properties",
                             radius, neighbors, gridX, gridY);
                 }
             } catch (Exception t) {
                 log.warn("Failed to apply LBPH configuration; falling back to OpenCV defaults: {}", t.toString());
-                this.recognizer = LBPHFaceRecognizer.create();
+                this.recognizer = createDefaultRecognizer();
             }
         } catch (Exception ex) {
             log.warn("Unable to configure LBPH recognizer from properties: {}", ex.toString());
         }
         return this;
+    }
+
+    private static LBPHFaceRecognizer createDefaultRecognizer() {
+        ensureNativeLoaded();
+        try {
+            return LBPHFaceRecognizer.create();
+        } catch (UnsatisfiedLinkError e) {
+            throw new IllegalStateException("OpenCV native library unavailable; LBPH recognizer cannot initialize", e);
+        }
+    }
+
+    private static LBPHFaceRecognizer createRecognizer(int radius, int neighbors, int gridX, int gridY, double threshold) {
+        ensureNativeLoaded();
+        try {
+            return LBPHFaceRecognizer.create(radius, neighbors, gridX, gridY, threshold);
+        } catch (UnsatisfiedLinkError e) {
+            throw new IllegalStateException("OpenCV native library unavailable; LBPH recognizer cannot initialize", e);
+        }
+    }
+
+    private static void ensureNativeLoaded() {
+        if (nativeLoaded) return;
+        synchronized (NATIVE_LOCK) {
+            if (nativeLoaded) return;
+            boolean loaded = OpenCVLoader.loadOrWarn();
+            if (!loaded) {
+                throw new IllegalStateException("OpenCV native library unavailable; LBPH recognizer cannot initialize");
+            }
+            nativeLoaded = true;
+        }
     }
 
     private Mat apply(Mat image) {
