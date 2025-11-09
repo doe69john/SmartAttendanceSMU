@@ -1,5 +1,8 @@
 package com.smartattendance.util;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.opencv.opencv_java;
 import org.opencv.core.Core;
@@ -33,14 +36,27 @@ public final class OpenCVLoader {
 
     private static boolean loadViaNuPattern() {
         try {
-            OpenCV.loadLocally();
+            Class<?> openCvClass = Class.forName("nu.pattern.OpenCV");
+            Method loadLocally = openCvClass.getMethod("loadLocally");
+            loadLocally.invoke(null);
             log.info("OpenCV native library loaded via nu.pattern.OpenCV.");
             return true;
-        } catch (UnsatisfiedLinkError | IllegalStateException ex) {
-            log.warn("nu.pattern.OpenCV.loadLocally() failed: {}", ex.toString());
+        } catch (ClassNotFoundException ex) {
+            log.debug("nu.pattern.OpenCV not on classpath; skipping bundled loader");
             return false;
-        } catch (Exception ex) {
-            log.warn("Unexpected error while loading OpenCV with nu.pattern.OpenCV", ex);
+        } catch (NoSuchMethodException | IllegalAccessException ex) {
+            log.warn("nu.pattern.OpenCV.loadLocally() unavailable: {}", ex.toString());
+            return false;
+        } catch (InvocationTargetException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof UnsatisfiedLinkError || cause instanceof IllegalStateException) {
+                log.warn("nu.pattern.OpenCV.loadLocally() failed: {}", cause.toString());
+            } else {
+                log.warn("Unexpected error while loading OpenCV with nu.pattern.OpenCV", cause != null ? cause : ex);
+            }
+            return false;
+        } catch (UnsatisfiedLinkError ex) {
+            log.warn("nu.pattern.OpenCV.loadLocally() failed: {}", ex.toString());
             return false;
         }
     }
