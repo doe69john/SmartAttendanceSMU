@@ -74,26 +74,40 @@ final class DependencyBootstrap {
     }
 
     private List<Artifact> commonArtifacts() {
-        return List.of(
-                new Artifact("org.bytedeco", "opencv", "4.9.0-1.5.10", null),
-                new Artifact("org.bytedeco", "openblas", "0.3.26-1.5.10", null),
-                new Artifact("org.bytedeco", "javacpp", "1.5.10", null),
-                new Artifact("com.fasterxml.jackson.core", "jackson-databind", "2.18.2", null),
-                new Artifact("com.fasterxml.jackson.core", "jackson-core", "2.18.2", null),
-                new Artifact("com.fasterxml.jackson.core", "jackson-annotations", "2.18.2", null),
-                new Artifact("org.slf4j", "slf4j-api", "2.0.16", null),
-                new Artifact("org.slf4j", "slf4j-simple", "2.0.16", null),
-                new Artifact("org.apache.commons", "commons-lang3", "3.14.0", null),
-                new Artifact("com.github.sarxos", "webcam-capture", "0.3.12", null)
-        );
+        List<Artifact> artifacts = new ArrayList<>();
+        artifacts.add(new Artifact("org.bytedeco", "opencv", "4.9.0-1.5.10", null));
+        artifacts.add(new Artifact("org.bytedeco", "openblas", "0.3.26-1.5.10", null));
+        artifacts.add(new Artifact("org.bytedeco", "javacpp", "1.5.10", null));
+        artifacts.add(new Artifact("org.bytedeco", "ffmpeg", "7.1-1.5.10", null));
+        artifacts.add(new Artifact("com.fasterxml.jackson.core", "jackson-databind", "2.18.2", null));
+        artifacts.add(new Artifact("com.fasterxml.jackson.core", "jackson-core", "2.18.2", null));
+        artifacts.add(new Artifact("com.fasterxml.jackson.core", "jackson-annotations", "2.18.2", null));
+        artifacts.add(new Artifact("org.slf4j", "slf4j-api", "2.0.16", null));
+        artifacts.add(new Artifact("org.slf4j", "slf4j-simple", "2.0.16", null));
+        artifacts.add(new Artifact("org.apache.commons", "commons-lang3", "3.14.0", null));
+        if (shouldUseWebcamCapture()) {
+            artifacts.add(new Artifact("com.github.sarxos", "webcam-capture", "0.3.12", null));
+        }
+        return artifacts;
     }
 
     private List<Artifact> platformArtifacts(String classifier) {
         return List.of(
                 new Artifact("org.bytedeco", "opencv", "4.9.0-1.5.10", classifier),
                 new Artifact("org.bytedeco", "openblas", "0.3.26-1.5.10", classifier),
-                new Artifact("org.bytedeco", "javacpp", "1.5.10", classifier)
+                new Artifact("org.bytedeco", "javacpp", "1.5.10", classifier),
+                new Artifact("org.bytedeco", "ffmpeg", "7.1-1.5.10", classifier)
         );
+    }
+
+    private boolean shouldUseWebcamCapture() {
+        return !isArm64Mac();
+    }
+
+    private boolean isArm64Mac() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH);
+        String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ENGLISH);
+        return os.contains("mac") && (arch.contains("arm64") || arch.contains("aarch64"));
     }
 
     private void downloadIfMissing(Path libDir, Artifact artifact) throws IOException, InterruptedException {
