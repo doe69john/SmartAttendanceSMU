@@ -21,6 +21,30 @@ public final class OpenCVUtils {
         return mat;
     }
 
+    /** Converts an OpenCV {@link Mat} to a {@link BufferedImage}. */
+    public static BufferedImage matToBufferedImage(Mat mat) {
+        if (mat == null || mat.empty()) {
+            return null;
+        }
+        int channels = mat.channels();
+        int type = channels > 1 ? BufferedImage.TYPE_3BYTE_BGR : BufferedImage.TYPE_BYTE_GRAY;
+        Mat converted = mat;
+        if (mat.type() != CvType.CV_8UC1 && mat.type() != CvType.CV_8UC3) {
+            converted = new Mat();
+            mat.convertTo(converted, channels > 1 ? CvType.CV_8UC3 : CvType.CV_8UC1);
+        }
+        int size = converted.channels() * converted.cols() * converted.rows();
+        byte[] data = new byte[size];
+        converted.get(0, 0, data);
+        BufferedImage image = new BufferedImage(converted.cols(), converted.rows(), type);
+        byte[] target = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+        System.arraycopy(data, 0, target, 0, Math.min(data.length, target.length));
+        if (converted != mat) {
+            converted.release();
+        }
+        return image;
+    }
+
     /** Resizes a Mat to the given size. */
     public static Mat resize(Mat src, int width, int height) {
         Mat dst = new Mat();
