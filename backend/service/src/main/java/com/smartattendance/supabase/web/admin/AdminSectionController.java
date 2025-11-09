@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,5 +59,12 @@ public class AdminSectionController {
     public SectionSummaryDto updateSection(@PathVariable("sectionId") UUID sectionId,
                                            @RequestBody CreateSectionRequest request) {
         return teachingManagementService.updateSectionWithProfessor(sectionId, request);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create section", description = "Creates a new section with a specified professor assignment.")
+    public SectionSummaryDto createSection(@RequestBody CreateSectionRequest request) {
+        return teachingManagementService.createSectionWithProfessor(request);
     }
 }

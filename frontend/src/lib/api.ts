@@ -744,6 +744,15 @@ export async function fetchAdminSection(sectionId: string) {
   return request<AdminSectionSummary>(`/admin/sections/${sectionId}`, 'GET');
 }
 
+export async function createAdminSection(payload: CreateSectionRequest & { studentIds?: string[] }) {
+  const { studentIds, ...rest } = payload;
+  const body = {
+    ...rest,
+    ...(Array.isArray(studentIds) && studentIds.length > 0 ? { student_ids: studentIds } : {}),
+  };
+  return request<SectionSummary>('/admin/sections', 'POST', body);
+}
+
 export async function updateAdminSection(sectionId: string, payload: CreateSectionRequest) {
   return request<SectionSummary>(`/admin/sections/${sectionId}`, 'PUT', payload);
 }
@@ -1227,6 +1236,7 @@ export default {
   fetchAdminCourseSections,
   fetchAdminCourseStudents,
   fetchAdminSections,
+  createAdminSection,
   fetchAdminUsers,
   updateAdminUser,
   deleteAdminUser,
