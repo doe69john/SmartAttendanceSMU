@@ -94,7 +94,7 @@ final class DependencyBootstrap {
         return List.of(
                 new Artifact("org.bytedeco", "opencv", "4.9.0-1.5.10", classifier),
                 new Artifact("org.bytedeco", "openblas", "0.3.26-1.5.10", classifier),
-                new Artifact("org.bytedeco", "javacpp", "1.5.10", classifier),
+                new Artifact("org.bytedeco", "javacpp", "1.5.10", classifier)
         );
     }
 
