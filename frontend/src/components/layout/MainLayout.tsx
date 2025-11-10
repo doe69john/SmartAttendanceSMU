@@ -3,7 +3,6 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import Sidebar from './Sidebar';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import AuthDebug from '@/components/debug/AuthDebug';
 
 export default function MainLayout() {
   const { session, profile, loading } = useAuth();
@@ -39,7 +38,7 @@ export default function MainLayout() {
             Refresh Page
           </button>
         </div>
-        <AuthDebug />
+        
       </div>
     );
   }
@@ -62,8 +61,6 @@ export default function MainLayout() {
           </div>
         )}
       </main>
-
-      <AuthDebug />
     </div>
   );
 }
