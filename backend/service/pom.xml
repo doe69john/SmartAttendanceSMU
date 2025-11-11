@@ -155,6 +155,21 @@
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
               <artifactId>opencv-platform</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>openblas-platform</artifactId>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>openblas-platform</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>javacpp</artifactId>
+              <classifier>linux-x86_64</classifier>
             </requireUnpack>
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
