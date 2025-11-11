@@ -28,6 +28,9 @@
   </scm>
   <properties>
     <java.version>21</java.version>
+    <bytedeco.opencv.version>4.9.0-1.5.10</bytedeco.opencv.version>
+    <bytedeco.openblas.version>0.3.26-1.5.10</bytedeco.openblas.version>
+    <bytedeco.javacpp.version>1.5.10</bytedeco.javacpp.version>
   </properties>
   <dependencies>
     <dependency>
@@ -90,21 +93,33 @@
     <dependency>
       <groupId>org.bytedeco</groupId>
       <artifactId>opencv-platform</artifactId>
-      <version>4.9.0-1.5.10</version>
+      <version>${bytedeco.opencv.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>opencv</artifactId>
+      <version>${bytedeco.opencv.version}</version>
       <classifier>linux-x86_64</classifier>
       <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.bytedeco</groupId>
       <artifactId>openblas-platform</artifactId>
-      <version>0.3.26-1.5.10</version>
+      <version>${bytedeco.openblas.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>openblas</artifactId>
+      <version>${bytedeco.openblas.version}</version>
       <classifier>linux-x86_64</classifier>
       <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.bytedeco</groupId>
       <artifactId>javacpp</artifactId>
-      <version>1.5.10</version>
+      <version>${bytedeco.javacpp.version}</version>
       <classifier>linux-x86_64</classifier>
       <scope>runtime</scope>
     </dependency>
@@ -144,17 +159,11 @@
             </requireUnpack>
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
-              <artifactId>opencv</artifactId>
-              <classifier>linux-x86_64</classifier>
+              <artifactId>openblas-platform</artifactId>
             </requireUnpack>
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
               <artifactId>openblas-platform</artifactId>
-              <classifier>linux-x86_64</classifier>
-            </requireUnpack>
-            <requireUnpack>
-              <groupId>org.bytedeco</groupId>
-              <artifactId>openblas</artifactId>
               <classifier>linux-x86_64</classifier>
             </requireUnpack>
             <requireUnpack>
@@ -164,7 +173,7 @@
             </requireUnpack>
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
-              <artifactId>opencv-platform</artifactId>
+              <artifactId>opencv</artifactId>
               <classifier>linux-x86_64</classifier>
             </requireUnpack>
             <requireUnpack>
@@ -173,7 +182,7 @@
             </requireUnpack>
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
-              <artifactId>openblas-platform</artifactId>
+              <artifactId>openblas</artifactId>
               <classifier>linux-x86_64</classifier>
             </requireUnpack>
             <requireUnpack>
