@@ -1,5 +1,7 @@
 package com.smartattendance.supabase.service.session;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -47,6 +49,7 @@ public class SessionLifecycleService {
     private final SectionModelService sectionModelService;
     private final SectionRepository sectionRepository;
     private final CompanionAccessTokenService companionTokenService;
+    private final Clock clock;
 
     public SessionLifecycleService(
             AttendanceSessionRepository sessionRepository,
@@ -57,7 +60,8 @@ public class SessionLifecycleService {
             SessionMapper sessionMapper,
             SectionModelService sectionModelService,
             SectionRepository sectionRepository,
-            CompanionAccessTokenService companionTokenService) {
+            CompanionAccessTokenService companionTokenService,
+            Clock clock) {
         this.sessionRepository = sessionRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.recordRepository = recordRepository;
@@ -67,6 +71,7 @@ public class SessionLifecycleService {
         this.sectionModelService = sectionModelService;
         this.sectionRepository = sectionRepository;
         this.companionTokenService = companionTokenService;
+        this.clock = clock;
     }
 
     public enum Action {
@@ -86,7 +91,7 @@ public class SessionLifecycleService {
             throw new IllegalArgumentException("Unauthorized: Not your session");
         }
 
-        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(clock);
         session.setUpdatedAt(now);
 
         SectionEntity section = null;
@@ -278,8 +283,9 @@ public class SessionLifecycleService {
         if (session.getSessionDate() == null || section.getStartTime() == null) {
             return;
         }
-        ZoneOffset offset = now.getOffset();
-        OffsetDateTime scheduledStart = OffsetDateTime.of(session.getSessionDate(), section.getStartTime(), offset);
+        LocalDateTime scheduledLocal = LocalDateTime.of(session.getSessionDate(), section.getStartTime());
+        ZoneOffset offset = clock.getZone().getRules().getOffset(scheduledLocal);
+        OffsetDateTime scheduledStart = OffsetDateTime.of(scheduledLocal, offset);
         OffsetDateTime earliestAllowed = scheduledStart.minusMinutes(30);
         if (now.isBefore(earliestAllowed)) {
             String message = String.format(

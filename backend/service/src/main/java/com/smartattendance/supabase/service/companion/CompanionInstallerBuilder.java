@@ -14,6 +14,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -40,10 +41,31 @@ public class CompanionInstallerBuilder {
         this.windows = System.getProperty("os.name", "").toLowerCase().contains("win");
     }
 
+    public Optional<Path> locateCompanionModule() {
+        Path projectRoot = resolveProjectRoot();
+        return locateCompanionModule(projectRoot);
+    }
+
     public BuildArtifacts buildInstallers() {
         Path projectRoot = resolveProjectRoot();
-        Path companionModule = resolveCompanionModule(projectRoot);
+        Path companionModule = locateCompanionModule(projectRoot)
+                .orElseThrow(() -> new IllegalStateException("Companion module not found. Checked "
+                        + projectRoot.resolve(COMPANION_MODULE).toAbsolutePath() + " and "
+                        + backendDirectory.resolve(COMPANION_MODULE).toAbsolutePath()));
+        return buildInstallers(projectRoot, companionModule);
+    }
 
+    public BuildArtifacts buildInstallers(Path companionModule) {
+        Path projectRoot = resolveProjectRoot();
+        if (companionModule == null || !Files.isDirectory(companionModule)) {
+            throw new IllegalStateException("Companion module not found. Checked "
+                    + projectRoot.resolve(COMPANION_MODULE).toAbsolutePath() + " and "
+                    + backendDirectory.resolve(COMPANION_MODULE).toAbsolutePath());
+        }
+        return buildInstallers(projectRoot, companionModule);
+    }
+
+    private BuildArtifacts buildInstallers(Path projectRoot, Path companionModule) {
         String version = readCompanionVersion(companionModule);
         runMavenBuild(projectRoot);
 
@@ -96,17 +118,16 @@ public class CompanionInstallerBuilder {
         return hasPom && hasWrapper;
     }
 
-    private Path resolveCompanionModule(Path projectRoot) {
+    private Optional<Path> locateCompanionModule(Path projectRoot) {
         Path direct = projectRoot.resolve(COMPANION_MODULE);
         if (Files.isDirectory(direct)) {
-            return direct;
+            return Optional.of(direct);
         }
         Path nested = backendDirectory.resolve(COMPANION_MODULE);
         if (Files.isDirectory(nested)) {
-            return nested;
+            return Optional.of(nested);
         }
-        throw new IllegalStateException("Companion module not found. Checked "
-                + direct.toAbsolutePath() + " and " + nested.toAbsolutePath());
+        return Optional.empty();
     }
 
     private Path findMavenWrapper(Path projectRoot) {

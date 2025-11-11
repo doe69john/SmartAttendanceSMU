@@ -118,6 +118,50 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <requiresUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>opencv</artifactId>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>opencv</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>opencv-platform</artifactId>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>opencv-platform</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>opencv-platform-redist</artifactId>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>openblas</artifactId>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>openblas</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>javacpp</artifactId>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>javacpp</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+          </requiresUnpack>
+        </configuration>
         <executions>
           <execution>
             <goals>

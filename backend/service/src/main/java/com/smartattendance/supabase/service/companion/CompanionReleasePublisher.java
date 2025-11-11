@@ -56,6 +56,12 @@ public class CompanionReleasePublisher {
             logger.warn("Supabase storage disabled. Unable to publish companion installers: {}", storageService.getDisabledReason());
             return;
         }
+        var companionModule = installerBuilder.locateCompanionModule();
+        if (companionModule.isEmpty()) {
+            logger.info("Companion module not present in this deployment. Skipping auto-publish.");
+            return;
+        }
+        Path modulePath = companionModule.get();
         String bucket = storageProperties.getCompanionInstallerBucket();
         if (!StringUtils.hasText(bucket)) {
             logger.warn("Companion installer bucket not configured. Set supabase.storage.companion-installer-bucket to enable auto-publish.");
@@ -71,7 +77,7 @@ public class CompanionReleasePublisher {
         try {
             storageService.withServiceKey(serviceKey, () -> {
                 try {
-                    CompanionInstallerBuilder.BuildArtifacts artifacts = installerBuilder.buildInstallers();
+                    CompanionInstallerBuilder.BuildArtifacts artifacts = installerBuilder.buildInstallers(modulePath);
                     String basePath = "releases/" + artifacts.version();
                     String macObject = basePath + "/mac/" + artifacts.macArchive().getFileName();
                     String windowsObject = basePath + "/windows/" + artifacts.windowsArchive().getFileName();
