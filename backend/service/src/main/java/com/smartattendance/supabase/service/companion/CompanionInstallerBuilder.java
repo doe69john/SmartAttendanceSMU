@@ -34,15 +34,20 @@ public class CompanionInstallerBuilder {
 
     private final Path backendDirectory;
     private final boolean windows;
+    private final Path projectRoot;
+    private final Path companionModule;
 
     public CompanionInstallerBuilder(Path backendDirectory) {
         this.backendDirectory = Objects.requireNonNull(backendDirectory, "backendDirectory");
         this.windows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        this.projectRoot = resolveProjectRoot();
+        this.companionModule = resolveCompanionModule(projectRoot);
     }
 
     public BuildArtifacts buildInstallers() {
-        Path projectRoot = resolveProjectRoot();
-        Path companionModule = resolveCompanionModule(projectRoot);
+        if (companionModule == null) {
+            throw new IllegalStateException("Companion module is not available for installer build");
+        }
 
         String version = readCompanionVersion(companionModule);
         runMavenBuild(projectRoot);
@@ -99,14 +104,16 @@ public class CompanionInstallerBuilder {
     private Path resolveCompanionModule(Path projectRoot) {
         Path direct = projectRoot.resolve(COMPANION_MODULE);
         if (Files.isDirectory(direct)) {
+            logger.debug("Resolved companion module at {}", direct.toAbsolutePath());
             return direct;
         }
         Path nested = backendDirectory.resolve(COMPANION_MODULE);
         if (Files.isDirectory(nested)) {
+            logger.debug("Resolved companion module at {}", nested.toAbsolutePath());
             return nested;
         }
-        throw new IllegalStateException("Companion module not found. Checked "
-                + direct.toAbsolutePath() + " and " + nested.toAbsolutePath());
+        logger.info("Companion module not found. Checked {} and {}", direct.toAbsolutePath(), nested.toAbsolutePath());
+        return null;
     }
 
     private Path findMavenWrapper(Path projectRoot) {
@@ -202,6 +209,14 @@ public class CompanionInstallerBuilder {
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to build companion module", ex);
         }
+    }
+
+    public boolean isCompanionModulePresent() {
+        return companionModule != null;
+    }
+
+    public Path getCompanionModule() {
+        return companionModule;
     }
 
     private Path createMacPackage(Path stagingRoot, Path jarPath, String version) throws IOException {
