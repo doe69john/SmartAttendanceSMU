@@ -1,7 +1,9 @@
 package com.smartattendance.supabase.service.session;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +49,7 @@ public class SessionLifecycleService {
     private final SectionModelService sectionModelService;
     private final SectionRepository sectionRepository;
     private final CompanionAccessTokenService companionTokenService;
+    private final Clock attendanceClock;
 
     public SessionLifecycleService(
             AttendanceSessionRepository sessionRepository,
@@ -57,7 +60,8 @@ public class SessionLifecycleService {
             SessionMapper sessionMapper,
             SectionModelService sectionModelService,
             SectionRepository sectionRepository,
-            CompanionAccessTokenService companionTokenService) {
+            CompanionAccessTokenService companionTokenService,
+            Clock attendanceClock) {
         this.sessionRepository = sessionRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.recordRepository = recordRepository;
@@ -67,6 +71,7 @@ public class SessionLifecycleService {
         this.sectionModelService = sectionModelService;
         this.sectionRepository = sectionRepository;
         this.companionTokenService = companionTokenService;
+        this.attendanceClock = attendanceClock;
     }
 
     public enum Action {
@@ -86,7 +91,7 @@ public class SessionLifecycleService {
             throw new IllegalArgumentException("Unauthorized: Not your session");
         }
 
-        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(attendanceClock);
         session.setUpdatedAt(now);
 
         SectionEntity section = null;
@@ -278,14 +283,15 @@ public class SessionLifecycleService {
         if (session.getSessionDate() == null || section.getStartTime() == null) {
             return;
         }
-        ZoneOffset offset = now.getOffset();
-        OffsetDateTime scheduledStart = OffsetDateTime.of(session.getSessionDate(), section.getStartTime(), offset);
-        OffsetDateTime earliestAllowed = scheduledStart.minusMinutes(30);
+        ZoneId zone = attendanceClock.getZone();
+        ZonedDateTime scheduledStartZoned = ZonedDateTime.of(session.getSessionDate(), section.getStartTime(), zone);
+        OffsetDateTime earliestAllowed = scheduledStartZoned.minusMinutes(30).toOffsetDateTime();
         if (now.isBefore(earliestAllowed)) {
             String message = String.format(
-                    "Live session can only start within 30 minutes of the scheduled start time (%s on %s)",
-                    scheduledStart.toLocalTime(),
-                    scheduledStart.toLocalDate());
+                    "Live session can only start within 30 minutes of the scheduled start time (%s on %s %s)",
+                    scheduledStartZoned.toLocalTime(),
+                    scheduledStartZoned.toLocalDate(),
+                    zone.getId());
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, message);
         }
     }
