@@ -28,6 +28,9 @@
   </scm>
   <properties>
     <java.version>21</java.version>
+    <bytedeco.opencv.version>4.9.0-1.5.10</bytedeco.opencv.version>
+    <bytedeco.openblas.version>0.3.26-1.5.10</bytedeco.openblas.version>
+    <bytedeco.javacpp.version>1.5.10</bytedeco.javacpp.version>
   </properties>
   <dependencies>
     <dependency>
@@ -90,7 +93,35 @@
     <dependency>
       <groupId>org.bytedeco</groupId>
       <artifactId>opencv-platform</artifactId>
-      <version>4.9.0-1.5.10</version>
+      <version>${bytedeco.opencv.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>opencv</artifactId>
+      <version>${bytedeco.opencv.version}</version>
+      <classifier>linux-x86_64</classifier>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>openblas-platform</artifactId>
+      <version>${bytedeco.openblas.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>openblas</artifactId>
+      <version>${bytedeco.openblas.version}</version>
+      <classifier>linux-x86_64</classifier>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>javacpp</artifactId>
+      <version>${bytedeco.javacpp.version}</version>
+      <classifier>linux-x86_64</classifier>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>com.github.sarxos</groupId>
@@ -120,9 +151,29 @@
         <artifactId>spring-boot-maven-plugin</artifactId>
         <configuration>
           <requiresUnpack>
+            <!-- Linux native jars that must be exploded so JavaCPP can load the .so files -->
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
               <artifactId>opencv-platform</artifactId>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>opencv</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>openblas-platform</artifactId>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>openblas</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>javacpp</artifactId>
+              <classifier>linux-x86_64</classifier>
             </requireUnpack>
           </requiresUnpack>
         </configuration>

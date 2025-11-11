@@ -8,6 +8,8 @@ spring:
 
 attendance:
   data-dir: ${DATA_DIR:backend/runtime/data}
+  session:
+    time-zone: ${DEV_ATTENDANCE_SESSION_TIME_ZONE:UTC}
 
 app:
   security:
