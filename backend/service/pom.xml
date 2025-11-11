@@ -109,33 +109,6 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
-      <groupId>org.bytedeco</groupId>
-      <artifactId>openblas-platform</artifactId>
-      <version>0.3.26-1.5.10</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.bytedeco</groupId>
-      <artifactId>opencv</artifactId>
-      <version>4.9.0-1.5.10</version>
-      <classifier>linux-x86_64</classifier>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.bytedeco</groupId>
-      <artifactId>openblas</artifactId>
-      <version>0.3.26-1.5.10</version>
-      <classifier>linux-x86_64</classifier>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.bytedeco</groupId>
-      <artifactId>javacpp</artifactId>
-      <version>1.5.10</version>
-      <classifier>linux-x86_64</classifier>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
       <groupId>com.github.sarxos</groupId>
       <artifactId>webcam-capture</artifactId>
       <version>0.3.12</version>
@@ -163,9 +136,31 @@
         <artifactId>spring-boot-maven-plugin</artifactId>
         <configuration>
           <requiresUnpack>
+            <!-- Linux native jars that must be exploded so JavaCPP can load the .so files -->
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
               <artifactId>opencv-platform</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>opencv</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>openblas-platform</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>openblas</artifactId>
+              <classifier>linux-x86_64</classifier>
+            </requireUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>javacpp</artifactId>
+              <classifier>linux-x86_64</classifier>
             </requireUnpack>
             <requireUnpack>
               <groupId>org.bytedeco</groupId>
