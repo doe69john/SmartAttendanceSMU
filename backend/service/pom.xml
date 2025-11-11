@@ -118,6 +118,14 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <requiresUnpack>
+            <requireUnpack>
+              <groupId>org.bytedeco</groupId>
+              <artifactId>opencv-platform</artifactId>
+            </requireUnpack>
+          </requiresUnpack>
+        </configuration>
         <executions>
           <execution>
             <goals>
