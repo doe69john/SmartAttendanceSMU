@@ -56,6 +56,10 @@ public class CompanionReleasePublisher {
             logger.warn("Supabase storage disabled. Unable to publish companion installers: {}", storageService.getDisabledReason());
             return;
         }
+        if (!installerBuilder.isCompanionModulePresent()) {
+            logger.info("Companion module directory not found. Skipping companion installer auto-publish.");
+            return;
+        }
         String bucket = storageProperties.getCompanionInstallerBucket();
         if (!StringUtils.hasText(bucket)) {
             logger.warn("Companion installer bucket not configured. Set supabase.storage.companion-installer-bucket to enable auto-publish.");
