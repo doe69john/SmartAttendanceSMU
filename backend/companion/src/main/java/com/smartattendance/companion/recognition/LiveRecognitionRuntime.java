@@ -581,29 +581,50 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                 manualContext));
     }
 
-    private void handleManualRosterMark(SessionWindow.RosterEntry entry) {
-        if (entry == null) {
+    private void handleManualRosterMark(SessionWindow.RosterAction action) {
+        if (action == null || action.entry() == null) {
             return;
         }
+        SessionWindow.RosterEntry entry = action.entry();
         String studentId = entry.studentId();
         if (studentId == null || studentId.isBlank()) {
             return;
         }
+        boolean resetToAbsent = action.resetToAbsent();
         window.setRosterSubmissionInProgress(studentId, true);
-        recordedStudents.add(studentId);
-        double confidence = entry.confidence() != null && Double.isFinite(entry.confidence()) ? entry.confidence() : 0.0d;
-        submitAttendance(studentId, confidence, true, "Manual roster mark")
+        Double submissionConfidence = entry.confidence() != null && Double.isFinite(entry.confidence())
+                ? entry.confidence()
+                : null;
+        boolean removedForReset = false;
+        if (resetToAbsent) {
+            removedForReset = recordedStudents.remove(studentId);
+        } else {
+            recordedStudents.add(studentId);
+        }
+        submitAttendance(studentId,
+                submissionConfidence,
+                true,
+                resetToAbsent ? "Manual roster reset to absent" : "Manual roster mark",
+                resetToAbsent ? "absent" : null)
                 .whenComplete((record, error) -> {
                     try {
                         if (error != null) {
                             log.warn("Manual roster submission failed for {}: {}", studentId, error.getMessage());
-                            recordedStudents.remove(studentId);
+                            if (resetToAbsent && removedForReset) {
+                                recordedStudents.add(studentId);
+                            }
+                            if (!resetToAbsent) {
+                                recordedStudents.remove(studentId);
+                            }
                             return;
                         }
                         if (record != null) {
                             updateRosterFromRecord(record);
                             String friendlyName = firstNonBlank(record.studentName(), entry.fullName(),
                                     studentNames.getOrDefault(studentId, studentId));
+                            String message = resetToAbsent
+                                    ? "Manual roster reset to absent"
+                                    : "Manual roster mark recorded";
                             eventBus.publish(new RecognitionEvent(
                                     RecognitionEventType.MANUAL_CONFIRMED,
                                     Instant.now(),
@@ -611,11 +632,16 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                                     studentId,
                                     friendlyName,
                                     record.confidence() != null ? record.confidence() : Double.NaN,
-                                    "Manual roster mark recorded",
+                                    message,
                                     true,
                                     true));
                         } else {
-                            recordedStudents.remove(studentId);
+                            if (resetToAbsent && removedForReset) {
+                                recordedStudents.add(studentId);
+                            }
+                            if (!resetToAbsent) {
+                                recordedStudents.remove(studentId);
+                            }
                         }
                     } finally {
                         window.setRosterSubmissionInProgress(studentId, false);
@@ -672,6 +698,15 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                                                                      double confidence,
                                                                      boolean manual,
                                                                      String notes) {
+        Double resolvedConfidence = Double.isFinite(confidence) ? confidence : null;
+        return submitAttendance(studentId, resolvedConfidence, manual, notes, null);
+    }
+
+    private CompletableFuture<AttendanceRecordView> submitAttendance(String studentId,
+                                                                     Double confidence,
+                                                                     boolean manual,
+                                                                     String notes,
+                                                                     String statusOverride) {
         final String resolvedCompanionToken = companionToken != null ? companionToken.trim() : "";
         final String resolvedServiceToken = settings.serviceToken() != null ? settings.serviceToken().trim() : "";
         final String sessionId = state.sessionId() != null ? state.sessionId().trim() : "";
@@ -690,9 +725,13 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                 ObjectNode payload = objectMapper.createObjectNode();
                 payload.put("sessionId", state.sessionId());
                 payload.put("studentId", studentId);
-                String status = determineAttendanceStatus(Instant.now());
+                String status = statusOverride != null && !statusOverride.isBlank()
+                        ? statusOverride
+                        : determineAttendanceStatus(Instant.now());
                 payload.put("status", status);
-                payload.put("confidenceScore", confidence);
+                if (confidence != null && Double.isFinite(confidence)) {
+                    payload.put("confidenceScore", confidence);
+                }
                 payload.put("markingMethod", manual ? "manual" : "auto");
                 if (notes != null && !notes.isBlank()) {
                     payload.put("notes", notes);
@@ -728,7 +767,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                         null,
                         studentId,
                         studentNames.getOrDefault(studentId, studentId),
-                        confidence,
+                        confidence != null && Double.isFinite(confidence) ? confidence : Double.NaN,
                         "Attendance API rejected request",
                         false,
                         manual));
@@ -740,7 +779,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                         null,
                         studentId,
                         studentNames.getOrDefault(studentId, studentId),
-                        confidence,
+                        confidence != null && Double.isFinite(confidence) ? confidence : Double.NaN,
                         ex.getMessage(),
                         false,
                         manual));
@@ -858,10 +897,11 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                                                        String fallbackStudentId,
                                                        String fallbackStatus,
                                                        boolean manual,
-                                                       double confidence) {
+                                                       Double confidence) {
         if (body == null || body.isBlank()) {
+            Double resolvedConfidence = confidence != null && Double.isFinite(confidence) ? confidence : null;
             return new AttendanceRecordView(fallbackStudentId, fallbackStatus, Instant.now(),
-                    manual ? "manual" : "auto", confidence, null, null);
+                    manual ? "manual" : "auto", resolvedConfidence, null, null);
         }
         try {
             JsonNode root = objectMapper.readTree(body);
@@ -878,7 +918,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                 method = manual ? "manual" : "auto";
             }
             Double responseConfidence = root.hasNonNull("confidenceScore") ? root.get("confidenceScore").asDouble()
-                    : (Double.isFinite(confidence) ? confidence : null);
+                    : (confidence != null && Double.isFinite(confidence) ? confidence : null);
             Instant markedAt = parseTimestamp(safeText(root.get("markedAt")));
             JsonNode studentNode = root.get("student");
             String studentName = studentNode != null ? safeText(studentNode.get("fullName")) : null;
@@ -886,8 +926,9 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
             return new AttendanceRecordView(studentId, status, markedAt, method, responseConfidence, studentName, studentNumber);
         } catch (Exception ex) {
             log.warn("Unable to parse attendance response: {}", ex.getMessage());
+            Double resolvedConfidence = confidence != null && Double.isFinite(confidence) ? confidence : null;
             return new AttendanceRecordView(fallbackStudentId, fallbackStatus, Instant.now(),
-                    manual ? "manual" : "auto", confidence, null, null);
+                    manual ? "manual" : "auto", resolvedConfidence, null, null);
         }
     }
 
@@ -916,6 +957,8 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         if (record.status() != null
                 && ("present".equalsIgnoreCase(record.status()) || "late".equalsIgnoreCase(record.status()))) {
             recordedStudents.add(studentId);
+        } else {
+            recordedStudents.remove(studentId);
         }
         window.updateRoster(buildRosterSnapshot());
     }
