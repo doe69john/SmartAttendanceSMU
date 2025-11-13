@@ -36,7 +36,7 @@ Key environment options:
   ..\mvnw.cmd spring-boot:run
   ```
 
-- **Command Prompt**
+- **Command Prompt**(Recommended for windows)
   ```cmd
   cd backend\service
   set SPRING_PROFILES_ACTIVE=dev
@@ -50,6 +50,7 @@ Key environment options:
   chmod 777 ../mvnw
   ../mvnw spring-boot:run
   ```
+head to `/frontend` to start up the frontend using another shell.
 
 > For production, inject the same key/value pairs as environment variables. If you keep them in a file, provide it via `SPRING_CONFIG_ADDITIONAL_LOCATION`.
 
