@@ -50,7 +50,7 @@ public class AttendanceRecordEntity {
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "marking_method", columnDefinition = "marking_method")
-    private MarkingMethod markingMethod = MarkingMethod.manual;
+    private MarkingMethod markingMethod = MarkingMethod.manual; // mirrors DB default
 
     @Column(name = "confidence_score")
     private Double confidenceScore;

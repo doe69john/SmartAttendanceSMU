@@ -62,7 +62,7 @@ public final class SessionWindow implements AutoCloseable {
     private JPanel rosterListPanel;
     private JTextField rosterSearchField;
     private String rosterFilter = "";
-    private Consumer<RosterEntry> manualMarkListener;
+    private Consumer<RosterAction> manualMarkListener;
     private Runnable endSessionListener;
     private JButton endSessionButton;
 
@@ -176,7 +176,7 @@ public final class SessionWindow implements AutoCloseable {
         });
     }
 
-    public void setManualMarkListener(Consumer<RosterEntry> manualMarkListener) {
+    public void setManualMarkListener(Consumer<RosterAction> manualMarkListener) {
         this.manualMarkListener = manualMarkListener;
     }
 
@@ -521,14 +521,16 @@ public final class SessionWindow implements AutoCloseable {
         container.add(textPanel, BorderLayout.CENTER);
 
         boolean submitting = rosterSubmitting.contains(entry.studentId());
-        boolean alreadyMarked = entry.status() != null
+        boolean resettable = entry.status() != null
                 && ("present".equalsIgnoreCase(entry.status()) || "late".equalsIgnoreCase(entry.status()));
 
-        JButton manualButton = new JButton(submitting ? "Marking..." : "Mark manual");
-        manualButton.setEnabled(!alreadyMarked && !submitting);
+        JButton manualButton = new JButton(submitting
+                ? "Marking..."
+                : (resettable ? "Mark absent" : "Mark manual"));
+        manualButton.setEnabled(!submitting);
         manualButton.addActionListener(e -> {
-            if (manualMarkListener != null && !submitting && !alreadyMarked) {
-                manualMarkListener.accept(entry);
+            if (manualMarkListener != null && !submitting) {
+                manualMarkListener.accept(new RosterAction(entry, resettable));
             }
         });
         container.add(manualButton, BorderLayout.EAST);
@@ -572,5 +574,8 @@ public final class SessionWindow implements AutoCloseable {
                                            Instant markedAt,
                                            String markingMethod,
                                            Double confidence) {
+    }
+
+    public static final record RosterAction(RosterEntry entry, boolean resetToAbsent) {
     }
 }

@@ -222,9 +222,7 @@ public class SessionLifecycleService {
             if (needsAbsenceSeed) {
                 record.setStatus(AttendanceRecordEntity.Status.absent);
                 record.setMarkedAt(now);
-                if (record.getMarkingMethod() == null) {
-                    record.setMarkingMethod(AttendanceRecordEntity.MarkingMethod.auto);
-                }
+                record.setMarkingMethod(AttendanceRecordEntity.MarkingMethod.auto);
                 events.add(new AttendanceEvent(
                         studentId,
                         AttendanceRecordEntity.Status.absent.name().toLowerCase(Locale.ROOT),
