@@ -19,7 +19,7 @@ Key directories:
 
 ## Environment Configuration
 
-`frontend/.env.local` holds the client-only values:
+create `frontend/.env.local`, it holds the client-only values:
 
 ```
 VITE_API_BASE_URL=http://localhost:18080/api
@@ -44,7 +44,7 @@ Set `VITE_API_BASE_URL` to the public URL of your backend when deploying (for ex
   npm run dev
   ```
 
-- **Windows (Command Prompt)**
+- **Windows (Command Prompt)**(recommended)
   ```cmd
   cd frontend
   npm install
