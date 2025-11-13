@@ -595,11 +595,12 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         Double submissionConfidence = entry.confidence() != null && Double.isFinite(entry.confidence())
                 ? entry.confidence()
                 : null;
-        boolean removedForReset = false;
+        final boolean removedForReset;
         if (resetToAbsent) {
             removedForReset = recordedStudents.remove(studentId);
         } else {
             recordedStudents.add(studentId);
+            removedForReset = false;
         }
         submitAttendance(studentId,
                 submissionConfidence,
