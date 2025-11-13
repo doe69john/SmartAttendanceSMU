@@ -50,7 +50,10 @@ Key environment options:
   chmod 777 ../mvnw
   ../mvnw spring-boot:run
   ```
-head to `/frontend` to start up the frontend using another shell.
+  please make sure last line of build output is `Face image storage: Supabase bucket 'face-images' via https://*.supabase.co/storage/v1  ` (means server is running as intended head to `/frontend` to start up the frontend using another shell.)
+
+  if buid output says "BUILD SUCCESS" build actually failed and service did not start up.
+
 
 > For production, inject the same key/value pairs as environment variables. If you keep them in a file, provide it via `SPRING_CONFIG_ADDITIONAL_LOCATION`.
 
