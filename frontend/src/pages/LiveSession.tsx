@@ -56,6 +56,11 @@ import {
 import { buildApiUrl } from '@/lib/openapi-client';
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'pending';
+type ManualRosterAction = {
+  studentId: string;
+  status: AttendanceStatus;
+  note: string;
+};
 type SessionStatus = 'scheduled' | 'active' | 'completed' | 'cancelled';
 
 interface SectionSummary {
@@ -767,21 +772,20 @@ const LiveSession = () => {
     });
   }, [rosterQuery, sessionRoster]);
 
-  const manualMarkMutation = useMutation<SessionAttendanceRecord, unknown, string>({
-    mutationFn: async (studentId: string) => {
+  const manualMarkMutation = useMutation<SessionAttendanceRecord, unknown, ManualRosterAction>({
+    mutationFn: async (action: ManualRosterAction) => {
       if (!activeSession?.id) {
         throw new Error('No active session');
       }
-      const status = determineRosterStatus();
       return upsertAttendanceRecord({
         sessionId: activeSession.id,
-        studentId,
-        status,
+        studentId: action.studentId,
+        status: action.status,
         markingMethod: 'manual',
-        notes: 'Manual roster mark from live session',
+        notes: action.note,
       });
     },
-    onSuccess: (record) => {
+    onSuccess: (record, variables) => {
       const normalized = mapAttendanceRecord(record);
       setAttendanceRecords(prev => {
         const index = prev.findIndex(item => item.studentId === normalized.studentId);
@@ -792,9 +796,12 @@ const LiveSession = () => {
         }
         return [...prev, normalized];
       });
+      const description = variables?.status === 'absent'
+        ? 'Reset to absent from the session roster.'
+        : 'Marked manually from the session roster.';
       toast({
         title: 'Attendance updated',
-        description: 'Marked manually from session roster.',
+        description,
       });
     },
     onError: (error) => {
@@ -1611,8 +1618,11 @@ const LiveSession = () => {
                   const confidenceDisplay = typeof record?.confidenceScore === 'number'
                     ? record.confidenceScore.toFixed(1)
                     : '—';
-                  const isMarking = manualMarkMutation.isPending && manualMarkMutation.variables === roster.id;
-                  const disableManual = isMarking || status === 'present' || status === 'late';
+                  const isMarking = manualMarkMutation.isPending
+                    && manualMarkMutation.variables?.studentId === roster.id;
+                  const isReset = status === 'present' || status === 'late';
+                  const targetStatus = isReset ? 'absent' : determineRosterStatus();
+                  const disableManual = isMarking;
                   return (
                     <div key={roster.id} className="rounded-lg border p-3">
                       <div className="flex flex-col gap-3">
@@ -1647,7 +1657,13 @@ const LiveSession = () => {
                               variant="secondary"
                               size="sm"
                               disabled={disableManual}
-                              onClick={() => manualMarkMutation.mutate(roster.id)}
+                              onClick={() => manualMarkMutation.mutate({
+                                studentId: roster.id,
+                                status: targetStatus,
+                                note: isReset
+                                  ? 'Manual roster reset to absent'
+                                  : 'Manual roster mark from live session',
+                              })}
                             >
                               {isMarking ? (
                                 <span className="flex items-center gap-2">
@@ -1655,7 +1671,7 @@ const LiveSession = () => {
                                   Marking...
                                 </span>
                               ) : (
-                                'Mark manual'
+                                isReset ? 'Mark absent' : 'Mark manual'
                               )}
                             </Button>
                           </div>

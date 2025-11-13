@@ -196,6 +196,10 @@ public class AttendanceService {
         if (status != null) {
             entity.setStatus(status);
             entity.setMarkedAt(now);
+            if (status == AttendanceRecordEntity.Status.absent || status == AttendanceRecordEntity.Status.pending) {
+                entity.setConfidenceScore(null);
+                entity.setLastSeen(null);
+            }
         }
         AttendanceRecordEntity.MarkingMethod markingMethod = parseMarkingMethod(request.getMarkingMethod()).orElse(null);
         if (markingMethod != null) {
