@@ -38,21 +38,24 @@ Key environment options:
   ..\mvnw.cmd spring-boot:run
   ```
 
-- **Command Prompt**
+- **Command Prompt**(Recommended for windows)
   ```cmd
   cd backend\service
   set SPRING_PROFILES_ACTIVE=dev
-  ..\mvnw.cmd clean package
   ..\mvnw.cmd spring-boot:run
   ```
 
-- **macOS / Linux (bash/zsh)** (macOS users must work from the `deploy` branch for compatibility)
+- **macOS / Linux (bash/zsh)**
   ```bash
   cd backend/service
   export SPRING_PROFILES_ACTIVE=dev
-  ../mvnw clean package
+  chmod 777 ../mvnw
   ../mvnw spring-boot:run
   ```
+  please make sure last line of build output is `Face image storage: Supabase bucket 'face-images' via https://*.supabase.co/storage/v1  ` (means server is running as intended head to `/frontend` to start up the frontend using another shell.)
+
+  if buid output says "BUILD SUCCESS" build actually failed and service did not start up.
+
 
 > For production, inject the same key/value pairs as environment variables. If you keep them in a file, provide it via `SPRING_CONFIG_ADDITIONAL_LOCATION`.
 
