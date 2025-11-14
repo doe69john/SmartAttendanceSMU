@@ -1015,7 +1015,9 @@ const LiveSession = () => {
       const modelUrl = resolveAssetUrl(metadata.modelDownloadPath);
       const labelsUrl = resolveAssetUrl(metadata.labelsDownloadPath);
       const cascadeUrl = resolveAssetUrl(metadata.cascadeDownloadPath);
-      const backendBaseUrl = buildApiUrl('', { absolute: true });
+      const backendBaseUrl = sessionDetails?.backendBaseUrl?.trim()
+        ? sessionDetails.backendBaseUrl.trim()
+        : buildApiUrl('', { absolute: true });
 
       if (!modelUrl || !labelsUrl || !cascadeUrl) {
         throw new Error('Unable to resolve companion model assets. Please verify the backend is exposing the required downloads.');
