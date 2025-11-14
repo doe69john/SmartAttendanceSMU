@@ -237,8 +237,6 @@ public class RosterImportService {
                     break;
                 }
             }
-        } catch (InvalidFormatException ex) {
-            throw new IOException("Invalid spreadsheet format", ex);
         }
         return new ParsedResult(rows, truncated);
     }
