@@ -4,7 +4,6 @@ import java.awt.Rectangle;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.opencv.core.Mat;
@@ -19,7 +18,6 @@ import org.springframework.util.StringUtils;
 
 import com.smartattendance.supabase.dto.FaceCaptureAnalysisRequest;
 import com.smartattendance.supabase.dto.FaceCaptureAnalysisResponse;
-import com.smartattendance.util.OpenCVLoader;
 import com.smartattendance.vision.HaarFaceDetector;
 import com.smartattendance.vision.preprocess.ImageQuality;
 
@@ -29,7 +27,6 @@ public class FaceCaptureAnalysisService {
     private static final Logger log = LoggerFactory.getLogger(FaceCaptureAnalysisService.class);
 
     private final HaarFaceDetector detector;
-    private final AtomicBoolean openCvLoaded = new AtomicBoolean(false);
 
     public FaceCaptureAnalysisService(HaarFaceDetector detector) {
         this.detector = detector;
@@ -39,13 +36,6 @@ public class FaceCaptureAnalysisService {
         if (request == null || !StringUtils.hasText(request.getImageData())) {
             throw new IllegalArgumentException("image_data is required");
         }
-        try {
-            ensureOpenCvLoaded();
-        } catch (IllegalStateException ex) {
-            log.warn("OpenCV unavailable, defaulting to pass-through analysis: {}", ex.getMessage());
-            return fallbackResponse("Detector unavailable. Please try again.");
-        }
-
         byte[] imageBytes = decodeImage(request.getImageData());
         if (imageBytes.length == 0) {
             throw new IllegalArgumentException("image_data contained no bytes");
@@ -105,15 +95,6 @@ public class FaceCaptureAnalysisService {
             }
             if (buffer != null) {
                 try { buffer.release(); } catch (Exception ignored) {}
-            }
-        }
-    }
-
-    private void ensureOpenCvLoaded() {
-        if (openCvLoaded.compareAndSet(false, true)) {
-            boolean loaded = OpenCVLoader.loadOrWarn();
-            if (!loaded) {
-                throw new IllegalStateException("OpenCV native library unavailable; face capture analysis disabled");
             }
         }
     }
