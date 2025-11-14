@@ -90,7 +90,7 @@ public final class ModelDownloader {
         }
     }
 
-    private String checksum(Path file) {
+    public static String checksum(Path file) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] data = Files.readAllBytes(file);

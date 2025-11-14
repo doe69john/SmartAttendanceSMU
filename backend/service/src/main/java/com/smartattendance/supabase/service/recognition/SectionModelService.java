@@ -825,6 +825,34 @@ public class SectionModelService {
             return null;
         });
     }
+
+    public byte[] fetchCompressedModelArtifact(UUID sectionId, String artifactName) {
+        byte[] artifact = fetchModelArtifact(sectionId, artifactName);
+        if (artifact == null || artifact.length == 0) {
+            return artifact;
+        }
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ZipOutputStream zos = new ZipOutputStream(baos)) {
+            ZipEntry entry = new ZipEntry(artifactName);
+            zos.putNextEntry(entry);
+            zos.write(artifact);
+            zos.closeEntry();
+            zos.finish();
+            byte[] compressed = baos.toByteArray();
+            log.info("Compressed artifact '{}' for section {} from {} bytes to {} bytes",
+                    artifactName,
+                    sectionId,
+                    artifact.length,
+                    compressed.length);
+            return compressed;
+        } catch (IOException ex) {
+            log.warn("Failed to compress artifact '{}' for section {}: {}",
+                    artifactName,
+                    sectionId,
+                    ex.getMessage());
+            return null;
+        }
+    }
     @jakarta.annotation.PreDestroy
     void shutdown() {
         executor.shutdown();

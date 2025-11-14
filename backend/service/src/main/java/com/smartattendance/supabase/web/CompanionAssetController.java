@@ -55,7 +55,11 @@ public class CompanionAssetController {
     @Operation(summary = "Download section LBPH model", description = "Streams the LBPH model for the requested section.")
     public ResponseEntity<Resource> downloadLbphModel(@PathVariable UUID sectionId) {
         log.info("Companion requested LBPH model for section {}", sectionId);
-        return downloadArtifact(sectionId, "lbph.yml", MediaType.APPLICATION_OCTET_STREAM, "lbph.yml");
+        return downloadArtifact(sectionId,
+                "lbph.yml",
+                MediaType.APPLICATION_OCTET_STREAM,
+                "lbph.zip",
+                true);
     }
 
     @GetMapping("/sections/{sectionId}/models/labels")
@@ -65,14 +69,31 @@ public class CompanionAssetController {
         return downloadArtifact(sectionId, "labels.txt", MediaType.TEXT_PLAIN, "labels.txt");
     }
 
-    private ResponseEntity<Resource> downloadArtifact(UUID sectionId, String artifactName, MediaType mediaType, String filename) {
+    private ResponseEntity<Resource> downloadArtifact(UUID sectionId,
+                                                      String artifactName,
+                                                      MediaType mediaType,
+                                                      String filename) {
+        return downloadArtifact(sectionId, artifactName, mediaType, filename, false);
+    }
+
+    private ResponseEntity<Resource> downloadArtifact(UUID sectionId,
+                                                      String artifactName,
+                                                      MediaType mediaType,
+                                                      String filename,
+                                                      boolean compressed) {
         log.info("Attempting to stream artifact '{}' for section {}", artifactName, sectionId);
-        byte[] data = sectionModelService.fetchModelArtifact(sectionId, artifactName);
+        byte[] data = compressed
+                ? sectionModelService.fetchCompressedModelArtifact(sectionId, artifactName)
+                : sectionModelService.fetchModelArtifact(sectionId, artifactName);
         if (data == null || data.length == 0) {
             log.warn("Artifact '{}' for section {} is unavailable or empty", artifactName, sectionId);
             return ResponseEntity.notFound().build();
         }
-        log.info("Serving artifact '{}' for section {} ({} bytes)", artifactName, sectionId, data.length);
+        log.info("Serving artifact '{}' for section {} ({} bytes, compressed={})",
+                artifactName,
+                sectionId,
+                data.length,
+                compressed);
         ByteArrayResource resource = new ByteArrayResource(data);
         return ResponseEntity.ok()
                 .contentType(mediaType)
