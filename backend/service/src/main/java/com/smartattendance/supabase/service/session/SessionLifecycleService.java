@@ -11,8 +11,6 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,7 +98,6 @@ public class SessionLifecycleService {
         try {
             switch (action) {
                 case start -> {
-                    ensureStartWindow(session, section, now);
                     retrainResult = retrainSectionForSession(session);
                     if (retrainResult != null) {
                         log.info("Session {} retrain completed: section={} images={} missingStudents={}",
@@ -267,21 +264,6 @@ public class SessionLifecycleService {
         String status = session.getStatus() != null ? session.getStatus().name().toLowerCase(Locale.ROOT) : null;
         SessionActionEvent event = new SessionActionEvent(action.name(), status, now);
         eventPublisher.publish(session.getId(), "session-action", event);
-    }
-
-    private void ensureStartWindow(AttendanceSessionEntity session, SectionEntity section, OffsetDateTime now) {
-        OffsetDateTime scheduledStart = resolveScheduledStart(session, section, now);
-        if (scheduledStart == null) {
-            return;
-        }
-        OffsetDateTime earliestAllowed = scheduledStart.minusMinutes(30);
-        if (now.isBefore(earliestAllowed)) {
-            String message = String.format(
-                    "Live session can only start within 30 minutes of the scheduled start time (%s on %s)",
-                    scheduledStart.toLocalTime(),
-                    scheduledStart.toLocalDate());
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, message);
-        }
     }
 
     private OffsetDateTime resolveScheduledStart(AttendanceSessionEntity session, SectionEntity section, OffsetDateTime now) {
