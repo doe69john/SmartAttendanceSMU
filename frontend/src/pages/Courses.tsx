@@ -10,7 +10,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { format, parseISO } from 'date-fns';
+import { formatCampusDate, formatCampusDateWithWeekday, formatCampusTime } from '@/lib/datetime';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 
@@ -81,24 +81,25 @@ const Courses = () => {
     return startFormatted || endFormatted || 'TBD';
   };
 
-  const formatSessionDate = (value?: string | null) => {
-    if (!value) return '-';
-    try {
-      return format(parseISO(value), 'EEE, MMM d, yyyy');
-    } catch (error) {
-      console.warn('Unable to format session date', error);
-      return value;
-    }
-  };
+  const formatSessionDate = (value?: string | null) => formatCampusDateWithWeekday(value, '-');
 
   const formatTimestamp = (value?: string | null) => {
-    if (!value) return '-';
-    try {
-      return format(parseISO(value), 'MMM d, yyyy - h:mm a');
-    } catch (error) {
-      console.warn('Unable to format timestamp', error);
-      return value;
+    if (!value) {
+      return '-';
     }
+    const datePart = formatCampusDate(value, '');
+    const timePart = formatCampusTime(value, '');
+    if (!datePart && !timePart) {
+      console.warn('Unable to format timestamp');
+      return '-';
+    }
+    if (!timePart) {
+      return datePart || '-';
+    }
+    if (!datePart) {
+      return timePart;
+    }
+    return `${datePart} - ${timePart}`;
   };
 
   const formatStatus = (value?: string | null) => {

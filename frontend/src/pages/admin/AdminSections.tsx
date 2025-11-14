@@ -47,7 +47,8 @@ import {
   upsertSectionEnrollment,
 } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
+import { formatCampusDate, formatCampusDateTime } from '@/lib/datetime';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -167,23 +168,9 @@ const validateCapacity = (value?: number | null): string | null => {
   return null;
 };
 
-const formatDate = (value?: string | null) => {
-  if (!value) return '—';
-  try {
-    return format(parseISO(value), 'PP');
-  } catch (error) {
-    return value;
-  }
-};
+const formatDate = (value?: string | null) => formatCampusDate(value, '—');
 
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '—';
-  try {
-    return format(parseISO(value), 'PP p');
-  } catch (error) {
-    return value;
-  }
-};
+const formatDateTime = (value?: string | null) => formatCampusDateTime(value, '—');
 
 const formatMarkingMethod = (method?: string | null) => {
   if (!method) return 'Manual';

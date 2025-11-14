@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { formatCampusDate, formatCampusDateTime, formatCampusTime } from '@/lib/datetime';
 
 import {
   fetchProfessorSectionReports,
@@ -54,32 +54,11 @@ const formatPercent = (value: number | undefined | null) => {
   return `${Math.round(value * 1000) / 10}%`;
 };
 
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-';
-  try {
-    return format(parseISO(value), 'PPp');
-  } catch (error) {
-    return value;
-  }
-};
+const formatDateTime = (value?: string | null) => formatCampusDateTime(value, '-');
 
-const formatTime = (value?: string | null) => {
-  if (!value) return '-';
-  try {
-    return format(parseISO(value), 'p');
-  } catch (error) {
-    return value;
-  }
-};
+const formatTime = (value?: string | null) => formatCampusTime(value, '-');
 
-const formatDate = (value?: string | null) => {
-  if (!value) return '-';
-  try {
-    return format(parseISO(value), 'PP');
-  } catch (error) {
-    return value;
-  }
-};
+const formatDate = (value?: string | null) => formatCampusDate(value, '-');
 
 const triggerDownload = ({ blob, filename }: ReportDownload) => {
   const url = URL.createObjectURL(blob);
