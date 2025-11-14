@@ -747,7 +747,8 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                     payload.put("notes", notes);
                 }
 
-                log.info("Submitting attendance payload: {}", payload);
+                log.info("Submitting attendance payload to {} (session={}, section={})", targetUrl, sessionId, sectionId);
+                log.debug("Submitting attendance payload body: {}", payload);
 
                 HttpRequest.Builder builder = HttpRequest.newBuilder()
                         .uri(URI.create(targetUrl))
@@ -851,6 +852,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         }
         try {
             String url = baseUrl + "/companion/sections/" + sectionId + "/sessions/" + sessionId + "/roster";
+            log.info("Fetching roster from {} (session={}, section={})", url, sessionId, sectionId);
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .timeout(Duration.ofSeconds(5))
