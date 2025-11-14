@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { APP_CONFIG } from '@/config/constants';
+import { RosterImportControl } from '@/components/sections/RosterImportControl';
 import {
   ApiError,
   createAdminSection,
@@ -40,6 +41,7 @@ import {
   type SessionAttendanceStats,
   type SessionSummary,
   type Student,
+  type RosterImportSummary,
   type ReportDownload,
   updateAdminSection,
   upsertSectionEnrollment,
@@ -305,6 +307,22 @@ function StudentSelector({
     }
   };
 
+  const handleRosterImport = useCallback(
+    (result: RosterImportSummary) => {
+      const roster = result?.students ?? [];
+      if (!roster.length) {
+        return;
+      }
+      const existing = new Set(selected.map((student) => student.id).filter((id): id is string => Boolean(id)));
+      const additions = roster.filter((student): student is StudentProfile => Boolean(student.id) && !existing.has(student.id));
+      if (!additions.length) {
+        return;
+      }
+      onChange([...selected, ...additions]);
+    },
+    [onChange, selected],
+  );
+
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -318,6 +336,7 @@ function StudentSelector({
         />
       </div>
       {helperText ? <p className="text-xs text-muted-foreground">{helperText}</p> : null}
+      <RosterImportControl disabled={disabled} onImport={handleRosterImport} />
       <ScrollArea className="max-h-52 rounded-md border">
         <div className="divide-y divide-border/60">
           {isFetching ? (

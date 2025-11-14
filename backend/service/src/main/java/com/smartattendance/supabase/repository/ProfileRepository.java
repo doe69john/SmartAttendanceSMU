@@ -28,6 +28,15 @@ public interface ProfileRepository extends JpaRepository<ProfileEntity, UUID> {
               FROM ProfileEntity p
              WHERE p.role = com.smartattendance.supabase.entity.ProfileEntity$Role.student
                AND (p.active IS NULL OR p.active = TRUE)
+               AND LOWER(p.fullName) = LOWER(:fullName)
+            """)
+    List<ProfileEntity> findActiveStudentsByFullName(@Param("fullName") String fullName);
+
+    @Query("""
+            SELECT p
+              FROM ProfileEntity p
+             WHERE p.role = com.smartattendance.supabase.entity.ProfileEntity$Role.student
+               AND (p.active IS NULL OR p.active = TRUE)
              ORDER BY LOWER(p.fullName)
             """)
     List<ProfileEntity> findActiveStudents(Pageable pageable);

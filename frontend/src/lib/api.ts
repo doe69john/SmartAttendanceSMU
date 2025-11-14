@@ -204,6 +204,20 @@ export interface ReportDownload {
   contentType: string;
 }
 
+export interface RosterImportIssue {
+  rowNumber?: number | null;
+  value?: string | null;
+  reason: string;
+}
+
+export interface RosterImportSummary {
+  processedCount: number;
+  matchedCount: number;
+  duplicateCount: number;
+  students: Student[];
+  issues: RosterImportIssue[];
+}
+
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type Headers = Record<string, string>;
 
@@ -996,6 +1010,12 @@ export async function createSection(payload: CreateSectionRequest & { studentIds
     ...(Array.isArray(studentIds) && studentIds.length > 0 ? { student_ids: studentIds } : {}),
   };
   return request<SectionSummary>('/sections', 'POST', body);
+}
+
+export async function importSectionRoster(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request<RosterImportSummary>('/sections/roster-import', 'POST', formData);
 }
 
 export async function updateSection(sectionId: string, payload: CreateSectionRequest & { studentIds?: string[] }) {
