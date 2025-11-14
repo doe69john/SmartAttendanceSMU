@@ -4,6 +4,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.List;
@@ -24,6 +26,7 @@ public class EnrollmentJdbcRepository {
 
     private static final RowMapper<SessionSummaryDto> SESSION_SUMMARY_MAPPER = EnrollmentJdbcRepository::mapSessionSummary;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+    private static final ZoneId CAMPUS_TIME_ZONE = ZoneId.of("Asia/Singapore");
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -301,9 +304,11 @@ public class EnrollmentJdbcRepository {
         OffsetDateTime start = dto.getStartTime();
         OffsetDateTime end = dto.getEndTime();
         if (start != null) {
-            StringBuilder range = new StringBuilder(TIME_FORMATTER.format(start));
+            ZonedDateTime localizedStart = start.atZoneSameInstant(CAMPUS_TIME_ZONE);
+            StringBuilder range = new StringBuilder(TIME_FORMATTER.format(localizedStart));
             if (end != null) {
-                range.append(" - ").append(TIME_FORMATTER.format(end));
+                ZonedDateTime localizedEnd = end.atZoneSameInstant(CAMPUS_TIME_ZONE);
+                range.append(" - ").append(TIME_FORMATTER.format(localizedEnd));
             }
             dto.setTimeRangeLabel(range.toString());
         }
