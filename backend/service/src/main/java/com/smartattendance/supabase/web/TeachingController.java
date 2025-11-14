@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -15,7 +16,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.smartattendance.supabase.dto.CourseSummaryDto;
 import com.smartattendance.supabase.dto.CreateCourseRequest;
@@ -28,8 +31,10 @@ import com.smartattendance.supabase.dto.SessionSummaryDto;
 import com.smartattendance.supabase.dto.StudentDto;
 import com.smartattendance.supabase.dto.ProfessorDirectoryEntry;
 import com.smartattendance.supabase.dto.StudentSectionDetailDto;
+import com.smartattendance.supabase.dto.RosterImportResponse;
 import com.smartattendance.supabase.service.profile.ProfileService;
 import com.smartattendance.supabase.service.reporting.TeachingManagementService;
+import com.smartattendance.supabase.service.section.RosterImportService;
 import com.smartattendance.supabase.web.support.AuthenticationResolver;
 
 import org.springframework.web.server.ResponseStatusException;
@@ -45,13 +50,16 @@ public class TeachingController {
     private final TeachingManagementService teachingManagementService;
     private final AuthenticationResolver authenticationResolver;
     private final ProfileService profileService;
+    private final RosterImportService rosterImportService;
 
     public TeachingController(TeachingManagementService teachingManagementService,
                              AuthenticationResolver authenticationResolver,
-                             ProfileService profileService) {
+                             ProfileService profileService,
+                             RosterImportService rosterImportService) {
         this.teachingManagementService = teachingManagementService;
         this.authenticationResolver = authenticationResolver;
         this.profileService = profileService;
+        this.rosterImportService = rosterImportService;
     }
 
     @GetMapping("/professors")
@@ -167,6 +175,14 @@ public class TeachingController {
         UUID userId = authenticationResolver.requireUserId(authentication);
         UUID professorProfileId = requireProfessorProfileId(userId);
         return teachingManagementService.scheduleSession(professorProfileId, sectionId, request);
+    }
+
+    @PostMapping(value = "/sections/roster-import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PROFESSOR')")
+    @Operation(summary = "Import roster from file",
+            description = "Parses a CSV or XLSX file and returns students that can be added to a section roster.")
+    public RosterImportResponse importRoster(@RequestPart("file") MultipartFile file) {
+        return rosterImportService.importRoster(file);
     }
 
     private UUID requireProfessorProfileId(UUID userId) {

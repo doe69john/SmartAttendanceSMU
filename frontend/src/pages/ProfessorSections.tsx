@@ -18,6 +18,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { APP_CONFIG } from '@/config/constants';
+import { RosterImportControl } from '@/components/sections/RosterImportControl';
 import {
   ApiError,
   createSection,
@@ -39,6 +40,7 @@ import {
   type SessionAttendanceStats,
   type SessionSummary,
   type Student,
+  type RosterImportSummary,
   type ReportDownload,
   updateSection,
   upsertSectionEnrollment,
@@ -277,6 +279,22 @@ const StudentSelector = ({ selected, onChange, disabled, helperText }: StudentSe
     [onChange, selected],
   );
 
+  const handleRosterImport = useCallback(
+    (result: RosterImportSummary) => {
+      const roster = result?.students ?? [];
+      if (!roster.length) {
+        return;
+      }
+      const existing = new Set(selected.map((student) => student.id).filter((id): id is string => Boolean(id)));
+      const additions = roster.filter((student): student is StudentProfile => Boolean(student.id) && !existing.has(student.id));
+      if (!additions.length) {
+        return;
+      }
+      onChange([...selected, ...additions]);
+    },
+    [onChange, selected],
+  );
+
   const renderResults = () => {
     if (!shouldSearch) {
       return (
@@ -349,8 +367,8 @@ const StudentSelector = ({ selected, onChange, disabled, helperText }: StudentSe
   };
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-dashed border-border/60 bg-muted/10">
+      <div className="space-y-3">
+        <div className="rounded-xl border border-dashed border-border/60 bg-muted/10">
         {selected.length === 0 ? (
           <div className="flex h-24 items-center justify-center px-4 text-sm text-muted-foreground">
             No students selected yet.
@@ -392,6 +410,7 @@ const StudentSelector = ({ selected, onChange, disabled, helperText }: StudentSe
           />
         </div>
         {helperText ? <p className="text-xs text-muted-foreground">{helperText}</p> : null}
+        <RosterImportControl disabled={disabled} onImport={handleRosterImport} />
         <div className="rounded-xl border border-border/60 bg-card/70">{renderResults()}</div>
       </div>
     </div>
