@@ -19,12 +19,13 @@ public class BackendBaseUrlResolver {
         String portHeader = singleHeader(request, "X-Forwarded-Port");
         HostAndPort hostAndPort = extractHostAndPort(hostHeader);
         int port = determinePort(portHeader, hostAndPort.port(), request.getServerPort(), scheme);
+        int normalizedPort = normalizePortForScheme(scheme, port);
         String prefix = combinePaths(request.getContextPath(), singleHeader(request, "X-Forwarded-Prefix"), API_SUFFIX);
         UriComponentsBuilder builder = UriComponentsBuilder.newInstance()
                 .scheme(scheme)
                 .host(hostAndPort.host());
-        if (port > 0 && port != defaultPortForScheme(scheme)) {
-            builder.port(port);
+        if (normalizedPort > 0 && normalizedPort != defaultPortForScheme(scheme)) {
+            builder.port(normalizedPort);
         }
         builder.path(prefix);
         String uri = builder.build().toUriString();
@@ -94,6 +95,20 @@ public class BackendBaseUrlResolver {
             return serverPort;
         }
         return defaultPortForScheme(scheme);
+    }
+
+    private static int normalizePortForScheme(String scheme, int port) {
+        int defaultPort = defaultPortForScheme(scheme);
+        if (port <= 0) {
+            return defaultPort;
+        }
+        if ("https".equalsIgnoreCase(scheme) && port == 80) {
+            return defaultPort;
+        }
+        if ("http".equalsIgnoreCase(scheme) && port == 443) {
+            return defaultPort;
+        }
+        return port;
     }
 
     private static int defaultPortForScheme(String scheme) {
