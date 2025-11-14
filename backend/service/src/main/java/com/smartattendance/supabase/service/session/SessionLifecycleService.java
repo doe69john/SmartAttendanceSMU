@@ -270,14 +270,10 @@ public class SessionLifecycleService {
     }
 
     private void ensureStartWindow(AttendanceSessionEntity session, SectionEntity section, OffsetDateTime now) {
-        if (session == null || section == null) {
+        OffsetDateTime scheduledStart = resolveScheduledStart(session, section, now);
+        if (scheduledStart == null) {
             return;
         }
-        if (session.getSessionDate() == null || section.getStartTime() == null) {
-            return;
-        }
-        ZoneOffset offset = now.getOffset();
-        OffsetDateTime scheduledStart = OffsetDateTime.of(session.getSessionDate(), section.getStartTime(), offset);
         OffsetDateTime earliestAllowed = scheduledStart.minusMinutes(30);
         if (now.isBefore(earliestAllowed)) {
             String message = String.format(
@@ -286,6 +282,21 @@ public class SessionLifecycleService {
                     scheduledStart.toLocalDate());
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, message);
         }
+    }
+
+    private OffsetDateTime resolveScheduledStart(AttendanceSessionEntity session, SectionEntity section, OffsetDateTime now) {
+        if (session == null) {
+            return null;
+        }
+        OffsetDateTime storedStart = session.getStartTime();
+        if (storedStart != null && session.getStatus() == AttendanceSessionEntity.Status.scheduled) {
+            return storedStart;
+        }
+        if (section == null || session.getSessionDate() == null || section.getStartTime() == null) {
+            return null;
+        }
+        ZoneOffset offset = storedStart != null ? storedStart.getOffset() : now.getOffset();
+        return OffsetDateTime.of(session.getSessionDate(), section.getStartTime(), offset);
     }
 
 }
