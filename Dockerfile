@@ -54,6 +54,9 @@ WORKDIR /workspace
 # Copy the Spring Boot fat JAR from the build stage
 COPY --from=build /workspace/backend/service/target/attendance-0.0.1-SNAPSHOT.jar ./target/attendance-0.0.1-SNAPSHOT.jar
 
+# Provide the full backend workspace (service + companion + runtime assets)
+COPY --from=build /workspace/backend ./backend
+
 # Cloud Run will set PORT; default to 8080 for local runs
 ENV PORT=8080
 

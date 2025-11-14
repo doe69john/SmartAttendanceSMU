@@ -21,6 +21,7 @@ public final class SessionState {
     private final Instant scheduledStart;
     private final Instant scheduledEnd;
     private final int lateThresholdMinutes;
+    private final String backendBaseUrl;
 
     private final AtomicBoolean active = new AtomicBoolean(true);
     private volatile Instant lastHeartbeat;
@@ -37,7 +38,8 @@ public final class SessionState {
                         String companionToken,
                         String scheduledStartIso,
                         String scheduledEndIso,
-                        Integer lateThresholdMinutes) {
+                        Integer lateThresholdMinutes,
+                        String backendBaseUrl) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.sectionId = sectionId;
         this.sessionDirectory = Objects.requireNonNull(sessionDirectory, "sessionDirectory");
@@ -51,6 +53,7 @@ public final class SessionState {
         this.scheduledStart = parseInstant(scheduledStartIso);
         this.scheduledEnd = parseInstant(scheduledEndIso);
         this.lateThresholdMinutes = sanitizeLateThreshold(lateThresholdMinutes);
+        this.backendBaseUrl = sanitizeBackendBaseUrl(backendBaseUrl);
     }
 
     public String sessionId() {
@@ -113,6 +116,10 @@ public final class SessionState {
         return lateThresholdMinutes;
     }
 
+    public String backendBaseUrl() {
+        return backendBaseUrl;
+    }
+
     public void registerAssets(Path modelPath, Path cascadePath, Path labelsPath, long downloaded) {
         this.modelPath = modelPath;
         this.cascadePath = cascadePath;
@@ -151,6 +158,13 @@ public final class SessionState {
         );
     }
 
+    public String resolveBackendBaseUrl(String fallback) {
+        if (backendBaseUrl != null && !backendBaseUrl.isBlank()) {
+            return backendBaseUrl;
+        }
+        return sanitizeBackendBaseUrl(fallback);
+    }
+
     private static Instant parseInstant(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -168,5 +182,16 @@ public final class SessionState {
         }
         int sanitized = Math.max(0, value);
         return Math.min(sanitized, 240);
+    }
+
+    private static String sanitizeBackendBaseUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        while (trimmed.endsWith("/") && trimmed.length() > 1) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

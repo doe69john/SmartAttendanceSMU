@@ -45,6 +45,10 @@ public class SessionDetailsDto {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private SectionModelMetadataDto modelMetadata;
 
+    @Schema(description = "Absolute backend API base URL the companion should call")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private String backendBaseUrl;
+
     public UUID getId() {
         return id;
     }
@@ -131,5 +135,13 @@ public class SessionDetailsDto {
 
     public void setModelMetadata(SectionModelMetadataDto modelMetadata) {
         this.modelMetadata = modelMetadata;
+    }
+
+    public String getBackendBaseUrl() {
+        return backendBaseUrl;
+    }
+
+    public void setBackendBaseUrl(String backendBaseUrl) {
+        this.backendBaseUrl = backendBaseUrl;
     }
 }

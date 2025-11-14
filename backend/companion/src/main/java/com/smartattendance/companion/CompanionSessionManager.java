@@ -107,6 +107,8 @@ public final class CompanionSessionManager {
         ModelDownloader.FileDownloadResult labels = downloader.downloadTo(sessionDir, labelsUrl, "labels.txt", bearerToken);
         ModelDownloader.FileDownloadResult cascade = downloader.downloadTo(sessionDir, request.cascadeUrl(), "haarcascade_frontalface_default.xml", bearerToken);
 
+        String resolvedBackendBaseUrl = determineBackendBaseUrl(request);
+
         SessionState state = new SessionState(
                 request.sessionId(),
                 request.sectionId(),
@@ -116,7 +118,8 @@ public final class CompanionSessionManager {
                 bearerToken,
                 request.scheduledStart(),
                 request.scheduledEnd(),
-                request.lateThresholdMinutes());
+                request.lateThresholdMinutes(),
+                resolvedBackendBaseUrl);
         long totalBytes = modelArchive.size() + cascade.size() + labels.size();
         state.registerAssets(model.path(), cascade.path(), labels.path(), totalBytes);
         writeSessionMetadata(state, model, cascade, labels, totalBytes);
@@ -145,6 +148,77 @@ public final class CompanionSessionManager {
                 cascade.path().toAbsolutePath().toString(),
                 labels.path().toAbsolutePath().toString(),
                 totalBytes);
+    }
+
+    private String determineBackendBaseUrl(StartSessionRequest request) {
+        String direct = sanitizeBackendBaseUrl(request.backendBaseUrl());
+        if (direct != null) {
+            return direct;
+        }
+
+        String derived = deriveBackendBaseUrlFromAsset(request.modelUrl());
+        if (derived == null) {
+            derived = deriveBackendBaseUrlFromAsset(request.labelsUrl());
+        }
+        if (derived == null) {
+            derived = deriveBackendBaseUrlFromAsset(request.cascadeUrl());
+        }
+        if (derived != null) {
+            logger.debug("Derived backend base URL {} from companion asset host (session={}, section={})",
+                    derived, request.sessionId(), request.sectionId());
+        }
+        return derived;
+    }
+
+    private static String deriveBackendBaseUrlFromAsset(String assetUrl) {
+        if (assetUrl == null || assetUrl.isBlank()) {
+            return null;
+        }
+        try {
+            java.net.URI uri = java.net.URI.create(assetUrl.trim());
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (scheme == null || host == null) {
+                return null;
+            }
+            int port = uri.getPort();
+            StringBuilder origin = new StringBuilder();
+            origin.append(scheme).append("://").append(host);
+            if (port > 0 && !isDefaultPort(scheme, port)) {
+                origin.append(":").append(port);
+            }
+            String path = uri.getPath();
+            String contextPath = "";
+            if (path != null && !path.isBlank()) {
+                int index = path.indexOf("/companion/");
+                if (index > 0) {
+                    contextPath = path.substring(0, index);
+                }
+            }
+            return sanitizeBackendBaseUrl(origin + contextPath);
+        } catch (Exception ex) {
+            logger.debug("Unable to derive backend base URL from asset {}: {}", assetUrl, ex.getMessage());
+            return null;
+        }
+    }
+
+    private static boolean isDefaultPort(String scheme, int port) {
+        if (port <= 0) {
+            return true;
+        }
+        return ("http".equalsIgnoreCase(scheme) && port == 80)
+                || ("https".equalsIgnoreCase(scheme) && port == 443);
+    }
+
+    private static String sanitizeBackendBaseUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        while (trimmed.endsWith("/") && trimmed.length() > 1) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public SessionStatusResponse sessionStatus(String token) {
