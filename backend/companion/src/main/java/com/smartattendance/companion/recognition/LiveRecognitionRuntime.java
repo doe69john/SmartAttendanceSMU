@@ -254,6 +254,10 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         return lbph;
     }
 
+    private String resolveBackendBaseUrl() {
+        return state.resolveBackendBaseUrl(settings.backendBaseUrl());
+    }
+
     private void loop() {
         long frameIntervalMs = Math.max(20L, Math.round(1000.0 / Math.max(15.0, config.camera().fps())));
         while (running.get()) {
@@ -670,7 +674,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
     }
 
     private void notifyBackendStop() throws Exception {
-        String baseUrl = settings.backendBaseUrl();
+        String baseUrl = resolveBackendBaseUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
             return;
         }
@@ -708,6 +712,11 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                                                                      boolean manual,
                                                                      String notes,
                                                                      String statusOverride) {
+        final String backendBaseUrl = resolveBackendBaseUrl();
+        if (backendBaseUrl == null || backendBaseUrl.isBlank()) {
+            log.warn("Skipping attendance submission because backend base URL is not configured");
+            return CompletableFuture.completedFuture(null);
+        }
         final String resolvedCompanionToken = companionToken != null ? companionToken.trim() : "";
         final String resolvedServiceToken = settings.serviceToken() != null ? settings.serviceToken().trim() : "";
         final String sessionId = state.sessionId() != null ? state.sessionId().trim() : "";
@@ -717,9 +726,9 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                 && !sessionId.isBlank()
                 && !sectionId.isBlank();
         final String targetUrl = useCompanionEndpoint
-                ? settings.backendBaseUrl() + "/companion/sections/" + sectionId + "/sessions/" + sessionId
+                ? backendBaseUrl + "/companion/sections/" + sectionId + "/sessions/" + sessionId
                         + "/attendance"
-                : settings.backendBaseUrl() + "/attendance";
+                : backendBaseUrl + "/attendance";
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -828,7 +837,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
     }
 
     private List<AttendanceRecordView> fetchRosterFromBackend() {
-        String baseUrl = settings.backendBaseUrl();
+        String baseUrl = resolveBackendBaseUrl();
         String sessionId = state.sessionId();
         String sectionId = state.sectionId();
         if (baseUrl == null || baseUrl.isBlank()

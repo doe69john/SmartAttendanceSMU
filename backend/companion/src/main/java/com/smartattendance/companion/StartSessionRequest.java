@@ -13,5 +13,6 @@ public record StartSessionRequest(String sessionId,
                                   String authToken,
                                   String scheduledStart,
                                   String scheduledEnd,
-                                  Integer lateThresholdMinutes) {
+                                  Integer lateThresholdMinutes,
+                                  String backendBaseUrl) {
 }
