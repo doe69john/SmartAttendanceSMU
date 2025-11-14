@@ -23,10 +23,23 @@ RUN mvn -f backend/pom.xml -pl service -am package -DskipTests
 # =========================
 # 2) Runtime stage
 # =========================
-FROM eclipse-temurin:21-jre-jammy AS runtime
+FROM eclipse-temurin:21-jre-noble AS runtime
 
 # Install native libs required by OpenCV / JavaCPP
 RUN apt-get update && apt-get install -y --no-install-recommends \
+      libopencv-core-dev \
+      libopencv-imgproc-dev \
+      libopencv-objdetect-dev \
+      libopencv-videoio-dev \
+      libopencv-java \
+      libopenblas0 \
+      libtbbmalloc2 \
+      libdc1394-25 \
+      libavcodec60 \
+      libavformat60 \
+      libswscale7 \
+      libgtk2.0-0 \
+      libcanberra-gtk-module \
       libgomp1 \
       libgfortran5 \
       libquadmath0 \
@@ -43,6 +56,9 @@ COPY --from=build /workspace/backend/service/target/attendance-0.0.1-SNAPSHOT.ja
 
 # Cloud Run will set PORT; default to 8080 for local runs
 ENV PORT=8080
+
+# Ensure JVM locates libopencv_java in default search paths
+ENV LD_LIBRARY_PATH=/usr/lib/jni:$LD_LIBRARY_PATH
 
 # JVM tuning for containers
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"

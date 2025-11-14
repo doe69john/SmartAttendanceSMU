@@ -34,7 +34,12 @@ public class HaarFaceDetector {
     private final AttendanceProperties config;
 
     public HaarFaceDetector(String cascadePath, AttendanceProperties config) {
-        try { Loader.load(opencv_java.class); } catch (UnsatisfiedLinkError e) { }
+        try {
+            Loader.load(opencv_java.class);
+        } catch (UnsatisfiedLinkError e) {
+            log.error("Failed to load OpenCV native library: {}", e.toString());
+            throw e;
+        }
 
         this.config = config;
         Path primaryPath = cascadePath != null && !cascadePath.isBlank() ? Paths.get(cascadePath) : null;
