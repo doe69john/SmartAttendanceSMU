@@ -782,7 +782,11 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                         false,
                         manual));
             } catch (Exception ex) {
-                log.warn("Attendance submission error: {}", ex.getMessage());
+                if (ex instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+                log.warn("Attendance submission error", ex);
+                String errorDescription = describeException(ex);
                 eventBus.publish(new RecognitionEvent(
                         RecognitionEventType.ERROR,
                         Instant.now(),
@@ -790,7 +794,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                         studentId,
                         studentNames.getOrDefault(studentId, studentId),
                         confidence != null && Double.isFinite(confidence) ? confidence : Double.NaN,
-                        ex.getMessage(),
+                        errorDescription,
                         false,
                         manual));
             }
@@ -883,9 +887,24 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
             }
             log.warn("Roster fetch failed: HTTP {} - {}", response.statusCode(), response.body());
         } catch (Exception ex) {
-            log.warn("Failed to load roster: {}", ex.getMessage());
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            log.warn("Failed to load roster", ex);
         }
         return List.of();
+    }
+
+    private String describeException(Throwable ex) {
+        if (ex == null) {
+            return "Unknown error";
+        }
+        String simpleName = ex.getClass().getSimpleName();
+        String message = ex.getMessage();
+        if (message == null || message.isBlank()) {
+            return simpleName;
+        }
+        return simpleName + ": " + message;
     }
 
     private AttendanceRecordView parseRosterNode(JsonNode node) {
