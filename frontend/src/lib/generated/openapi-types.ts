@@ -1681,6 +1681,8 @@ export interface components {
         };
         /** @description Detailed representation of an attendance session */
         SessionDetails: {
+            /** @description Absolute backend API base URL the companion should call */
+            backendBaseUrl?: string;
             /**
              * Format: date-time
              * @description Planned end time with timezone

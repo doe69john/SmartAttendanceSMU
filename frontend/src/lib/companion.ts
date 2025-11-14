@@ -25,6 +25,7 @@ export interface CompanionSessionPayload {
   scheduledStart?: string;
   scheduledEnd?: string;
   lateThresholdMinutes?: number;
+  backendBaseUrl?: string;
 }
 
 export interface CompanionSessionStatus {

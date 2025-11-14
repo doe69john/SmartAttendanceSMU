@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -19,6 +21,7 @@ import com.smartattendance.supabase.dto.RecognitionLogEntryDto;
 import com.smartattendance.supabase.dto.SessionDetailsDto;
 import com.smartattendance.supabase.dto.StudentDto;
 import com.smartattendance.supabase.service.session.SessionQueryService;
+import com.smartattendance.supabase.web.support.BackendBaseUrlResolver;
 
 @RestController
 @RequestMapping("/api")
@@ -26,15 +29,23 @@ import com.smartattendance.supabase.service.session.SessionQueryService;
 public class SessionQueryController {
 
     private final SessionQueryService sessionQueryService;
+    private final BackendBaseUrlResolver backendBaseUrlResolver;
 
-    public SessionQueryController(SessionQueryService sessionQueryService) {
+    public SessionQueryController(SessionQueryService sessionQueryService,
+                                 BackendBaseUrlResolver backendBaseUrlResolver) {
         this.sessionQueryService = sessionQueryService;
+        this.backendBaseUrlResolver = backendBaseUrlResolver;
     }
 
     @GetMapping("/sessions/{id}")
     @Operation(summary = "Get session details", description = "Loads metadata for a specific attendance session.")
-    public SessionDetailsDto getSession(@PathVariable("id") UUID sessionId) {
-        return sessionQueryService.loadSession(sessionId);
+    public SessionDetailsDto getSession(@PathVariable("id") UUID sessionId,
+                                        HttpServletRequest request) {
+        SessionDetailsDto dto = sessionQueryService.loadSession(sessionId);
+        if (dto != null) {
+            dto.setBackendBaseUrl(backendBaseUrlResolver.resolve(request));
+        }
+        return dto;
     }
 
     @GetMapping("/sessions/{id}/attendance")
