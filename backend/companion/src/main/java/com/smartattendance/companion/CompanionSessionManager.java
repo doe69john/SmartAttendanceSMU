@@ -11,6 +11,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -97,7 +99,11 @@ public final class CompanionSessionManager {
                 request.sessionId(), request.sectionId(), request.modelUrl(), labelsUrl, request.cascadeUrl(),
                 StringUtils.isNotBlank(bearerToken), maskedToken);
 
-        ModelDownloader.FileDownloadResult model = downloader.downloadTo(sessionDir, request.modelUrl(), "lbph.yml", bearerToken);
+        ModelDownloader.FileDownloadResult modelArchive = downloader.downloadTo(sessionDir,
+                request.modelUrl(),
+                "lbph.zip",
+                bearerToken);
+        ModelDownloader.FileDownloadResult model = extractModelArchive(modelArchive, "lbph.yml");
         ModelDownloader.FileDownloadResult labels = downloader.downloadTo(sessionDir, labelsUrl, "labels.txt", bearerToken);
         ModelDownloader.FileDownloadResult cascade = downloader.downloadTo(sessionDir, request.cascadeUrl(), "haarcascade_frontalface_default.xml", bearerToken);
 
@@ -111,9 +117,9 @@ public final class CompanionSessionManager {
                 request.scheduledStart(),
                 request.scheduledEnd(),
                 request.lateThresholdMinutes());
-        long totalBytes = model.size() + cascade.size() + labels.size();
+        long totalBytes = modelArchive.size() + cascade.size() + labels.size();
         state.registerAssets(model.path(), cascade.path(), labels.path(), totalBytes);
-        writeSessionMetadata(state, model, cascade, labels);
+        writeSessionMetadata(state, model, cascade, labels, totalBytes);
         cacheCascadeForFallback(cascade.path());
 
         RecognitionEventBus eventBus = new RecognitionEventBus();
@@ -223,7 +229,8 @@ public final class CompanionSessionManager {
     private void writeSessionMetadata(SessionState state,
                                        ModelDownloader.FileDownloadResult model,
                                        ModelDownloader.FileDownloadResult cascade,
-                                       ModelDownloader.FileDownloadResult labels) {
+                                       ModelDownloader.FileDownloadResult labels,
+                                       long downloadedBytes) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("sessionId", state.sessionId());
         metadata.put("sectionId", state.sectionId());
@@ -239,7 +246,7 @@ public final class CompanionSessionManager {
         metadata.put("labelsBytes", labels.size());
         metadata.put("missingStudentIds", state.missingStudentIds());
         metadata.put("labelMap", state.labelMap());
-        metadata.put("downloadedBytes", model.size() + cascade.size() + labels.size());
+        metadata.put("downloadedBytes", downloadedBytes);
         metadata.put("lastHeartbeat", state.lastHeartbeat().toString());
         metadata.put("scheduledStart", state.scheduledStart() != null ? state.scheduledStart().toString() : null);
         metadata.put("scheduledEnd", state.scheduledEnd() != null ? state.scheduledEnd().toString() : null);
@@ -249,6 +256,44 @@ public final class CompanionSessionManager {
         } catch (IOException ex) {
             logger.warn("Failed to write session metadata for {}: {}", state.sessionId(), ex.getMessage());
         }
+    }
+
+    private ModelDownloader.FileDownloadResult extractModelArchive(ModelDownloader.FileDownloadResult archiveResult,
+                                                                   String expectedFileName) {
+        if (archiveResult == null || archiveResult.path() == null) {
+            throw new CompanionHttpException(500, "Model archive missing from download response");
+        }
+        Path archivePath = archiveResult.path();
+        if (!Files.exists(archivePath)) {
+            throw new CompanionHttpException(500, "Model archive " + archivePath + " is unavailable");
+        }
+        Path targetDir = archivePath.getParent() != null ? archivePath.getParent() : sessionsDirectory;
+        Path targetFile = targetDir.resolve(expectedFileName);
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(archivePath))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (!entry.isDirectory() && expectedFileName.equals(entry.getName())) {
+                    Files.copy(zis, targetFile, StandardCopyOption.REPLACE_EXISTING);
+                    long size = Files.size(targetFile);
+                    String checksum = ModelDownloader.checksum(targetFile);
+                    logger.info("Extracted {} from companion archive {} ({} bytes)",
+                            expectedFileName,
+                            archivePath.getFileName(),
+                            size);
+                    return new ModelDownloader.FileDownloadResult(targetFile, size, checksum);
+                }
+                zis.closeEntry();
+            }
+        } catch (IOException ex) {
+            throw new CompanionHttpException(500, "Failed to extract model archive: " + ex.getMessage(), ex);
+        } finally {
+            try {
+                Files.deleteIfExists(archivePath);
+            } catch (IOException ignored) {
+                // best effort cleanup
+            }
+        }
+        throw new CompanionHttpException(500, "Model archive did not contain " + expectedFileName);
     }
 
     private String resolveLabelsUrl(StartSessionRequest request) {
@@ -264,6 +309,9 @@ public final class CompanionSessionManager {
         }
         if (modelUrl.endsWith("lbph-model.yml")) {
             return modelUrl.substring(0, modelUrl.length() - "lbph-model.yml".length()) + "labels.txt";
+        }
+        if (modelUrl.endsWith("lbph.zip")) {
+            return modelUrl.substring(0, modelUrl.length() - "lbph.zip".length()) + "labels.txt";
         }
         return modelUrl + ".labels";
     }
