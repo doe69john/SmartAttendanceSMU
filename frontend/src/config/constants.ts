@@ -4,6 +4,8 @@ export const APP_CONFIG = {
   version: '1.0.0',
   university: 'Singapore Management University',
   supportEmail: 'support@smu.edu.sg',
+  locale: 'en-SG',
+  timeZone: 'Asia/Singapore',
   
   // Student validation
   allowedEmailDomains: ['.smu.edu.sg'],

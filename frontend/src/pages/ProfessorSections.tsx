@@ -46,7 +46,7 @@ import {
   upsertSectionEnrollment,
 } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
+import { formatCampusDate, formatCampusDateTime, formatCampusTime } from '@/lib/datetime';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -418,13 +418,7 @@ const StudentSelector = ({ selected, onChange, disabled, helperText }: StudentSe
 };
 
 function formatTime(value?: string | null) {
-  if (!value) return 'N/A';
-  try {
-    const parsed = parseISO(value.length === 5 ? `1970-01-01T${value}:00` : value);
-    return format(parsed, 'p');
-  } catch (error) {
-    return value.slice(0, 5);
-  }
+  return formatCampusTime(value, 'N/A');
 }
 
 function formatTimeRange(start?: string | null, end?: string | null) {
@@ -445,21 +439,11 @@ function toTimeInput(value?: string | null) {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return 'N/A';
-  try {
-    return format(parseISO(value), 'PP');
-  } catch (error) {
-    return value;
-  }
+  return formatCampusDate(value, 'N/A');
 }
 
 function formatDateTime(value?: string | null) {
-  if (!value) return 'N/A';
-  try {
-    return format(parseISO(value), 'PP p');
-  } catch (error) {
-    return value;
-  }
+  return formatCampusDateTime(value, 'N/A');
 }
 
 function deriveStatusBadge(status?: string | null) {
