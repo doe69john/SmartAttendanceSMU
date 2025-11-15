@@ -25,6 +25,9 @@ public class CompanionReleasePublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(CompanionReleasePublisher.class);
     private static final MediaType ZIP_MEDIA_TYPE = MediaType.parseMediaType("application/zip");
+    private static final String STORAGE_BRANCH_PREFIX = "deploy";
+    private static final String STORAGE_RELEASE_PREFIX = STORAGE_BRANCH_PREFIX + "/releases";
+    private static final String LATEST_MANIFEST_PATH = STORAGE_RELEASE_PREFIX + "/latest.json";
 
     private final SupabaseStorageService storageService;
     private final SupabaseStorageProperties storageProperties;
@@ -72,7 +75,7 @@ public class CompanionReleasePublisher {
             storageService.withServiceKey(serviceKey, () -> {
                 try {
                     CompanionInstallerBuilder.BuildArtifacts artifacts = installerBuilder.buildInstallers();
-                    String basePath = "releases/" + artifacts.version();
+                    String basePath = STORAGE_RELEASE_PREFIX + "/" + artifacts.version();
                     String macObject = basePath + "/mac/" + artifacts.macArchive().getFileName();
                     String windowsObject = basePath + "/windows/" + artifacts.windowsArchive().getFileName();
 
@@ -83,7 +86,7 @@ public class CompanionReleasePublisher {
                     byte[] manifestBytes = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(manifest);
                     String manifestPath = basePath + "/manifest.json";
                     storageService.upload(bucket, manifestPath, MediaType.APPLICATION_JSON, manifestBytes, true);
-                    storageService.upload(bucket, "releases/latest.json", MediaType.APPLICATION_JSON, manifestBytes, true);
+                    storageService.upload(bucket, LATEST_MANIFEST_PATH, MediaType.APPLICATION_JSON, manifestBytes, true);
                     logger.info("Published companion installers to bucket '{}' under version {}", bucket, artifacts.version());
                 } catch (IOException ex) {
                     throw new IllegalStateException("Failed to publish companion installers: " + ex.getMessage(), ex);
