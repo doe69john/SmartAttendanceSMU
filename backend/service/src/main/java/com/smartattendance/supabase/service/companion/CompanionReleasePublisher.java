@@ -25,6 +25,7 @@ public class CompanionReleasePublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(CompanionReleasePublisher.class);
     private static final MediaType ZIP_MEDIA_TYPE = MediaType.parseMediaType("application/zip");
+    private static final String GOOGLE_RELEASE_ROOT = "google/releases";
 
     private final SupabaseStorageService storageService;
     private final SupabaseStorageProperties storageProperties;
@@ -72,7 +73,7 @@ public class CompanionReleasePublisher {
             storageService.withServiceKey(serviceKey, () -> {
                 try {
                     CompanionInstallerBuilder.BuildArtifacts artifacts = installerBuilder.buildInstallers();
-                    String basePath = "releases/" + artifacts.version();
+                    String basePath = GOOGLE_RELEASE_ROOT + "/" + artifacts.version();
                     String macObject = basePath + "/mac/" + artifacts.macArchive().getFileName();
                     String windowsObject = basePath + "/windows/" + artifacts.windowsArchive().getFileName();
 
@@ -83,7 +84,7 @@ public class CompanionReleasePublisher {
                     byte[] manifestBytes = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(manifest);
                     String manifestPath = basePath + "/manifest.json";
                     storageService.upload(bucket, manifestPath, MediaType.APPLICATION_JSON, manifestBytes, true);
-                    storageService.upload(bucket, "releases/latest.json", MediaType.APPLICATION_JSON, manifestBytes, true);
+                    storageService.upload(bucket, GOOGLE_RELEASE_ROOT + "/latest.json", MediaType.APPLICATION_JSON, manifestBytes, true);
                     logger.info("Published companion installers to bucket '{}' under version {}", bucket, artifacts.version());
                 } catch (IOException ex) {
                     throw new IllegalStateException("Failed to publish companion installers: " + ex.getMessage(), ex);
