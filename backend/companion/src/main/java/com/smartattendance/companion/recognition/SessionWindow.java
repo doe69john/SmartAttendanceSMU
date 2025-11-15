@@ -5,10 +5,11 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.awt.Font;
 import java.awt.image.BufferedImage;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -18,7 +19,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,9 +41,6 @@ import javax.swing.event.DocumentListener;
 
 import java.util.function.Consumer;
 
-import com.github.sarxos.webcam.Webcam;
-import com.github.sarxos.webcam.WebcamPanel;
-
 /**
  * Swing window showing the live camera feed with overlays and a rolling event log.
  */
@@ -54,9 +51,8 @@ public final class SessionWindow implements AutoCloseable {
 
     private final AtomicReference<Collection<TrackedFace>> trackedFaces = new AtomicReference<>(List.of());
     private final DefaultListModel<String> logModel = new DefaultListModel<>();
-    private final Webcam webcam;
     private final JFrame frame;
-    private final WebcamPanel webcamPanel;
+    private final LiveCameraPanel cameraPanel;
     private final List<RosterEntry> rosterEntries = new ArrayList<>();
     private final Set<String> rosterSubmitting = new HashSet<>();
     private JPanel rosterListPanel;
@@ -66,15 +62,10 @@ public final class SessionWindow implements AutoCloseable {
     private Runnable endSessionListener;
     private JButton endSessionButton;
 
-    public SessionWindow(Webcam webcam) {
-        this.webcam = Objects.requireNonNull(webcam, "webcam");
+    public SessionWindow(Dimension preferredSize) {
         this.frame = new JFrame("SmartAttendance Companion");
-        this.webcamPanel = new WebcamPanel(webcam, true);
-        this.webcamPanel.setFillArea(true);
-        this.webcamPanel.setPreferredSize(new Dimension(960, 540));
-        this.webcamPanel.setFPSDisplayed(true);
-        this.webcamPanel.setLayout(new BorderLayout());
-        this.webcamPanel.setPainter(new OverlayPainter());
+        Dimension size = preferredSize != null ? preferredSize : new Dimension(960, 540);
+        this.cameraPanel = new LiveCameraPanel(size);
     }
 
     public void open() {
@@ -83,9 +74,9 @@ public final class SessionWindow implements AutoCloseable {
 
             JPanel videoContainer = new JPanel();
             videoContainer.setLayout(new OverlayLayout(videoContainer));
-            webcamPanel.setAlignmentX(0f);
-            webcamPanel.setAlignmentY(0f);
-            videoContainer.add(webcamPanel);
+            cameraPanel.setAlignmentX(0f);
+            cameraPanel.setAlignmentY(0f);
+            videoContainer.add(cameraPanel);
 
             JPanel overlay = new JPanel(new BorderLayout());
             overlay.setOpaque(false);
@@ -225,7 +216,14 @@ public final class SessionWindow implements AutoCloseable {
 
     public void updateTrackedFaces(Collection<TrackedFace> faces) {
         trackedFaces.set(faces != null ? List.copyOf(faces) : List.of());
-        webcamPanel.repaint();
+        SwingUtilities.invokeLater(cameraPanel::repaint);
+    }
+
+    public void updateCameraFrame(BufferedImage frameImage) {
+        if (frameImage == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> cameraPanel.setFrame(frameImage));
     }
 
     public void appendEvent(RecognitionEvent event) {
@@ -334,51 +332,73 @@ public final class SessionWindow implements AutoCloseable {
         });
     }
 
-    private final class OverlayPainter implements WebcamPanel.Painter {
-        private final WebcamPanel.Painter delegate = webcamPanel.getDefaultPainter();
+    private final class LiveCameraPanel extends JPanel {
+        private final AtomicReference<BufferedImage> currentFrame = new AtomicReference<>();
+        private final boolean fillArea = true;
 
-        @Override
-        public void paintPanel(WebcamPanel panel, Graphics2D g2) {
-            delegate.paintPanel(panel, g2);
+        private LiveCameraPanel(Dimension preferredSize) {
+            Dimension size = preferredSize != null ? preferredSize : new Dimension(960, 540);
+            setPreferredSize(size);
+            setMinimumSize(size);
+            setBackground(new Color(10, 14, 20));
+        }
+
+        void setFrame(BufferedImage frameImage) {
+            currentFrame.set(frameImage);
+            repaint();
         }
 
         @Override
-        public void paintImage(WebcamPanel panel, BufferedImage image, Graphics2D graphics) {
-            delegate.paintImage(panel, image, graphics);
-            if (image == null) {
-                return;
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D graphics = (Graphics2D) g.create();
+            try {
+                graphics.setColor(new Color(20, 24, 31));
+                graphics.fillRect(0, 0, getWidth(), getHeight());
+                BufferedImage image = currentFrame.get();
+                if (image == null) {
+                    return;
+                }
+                int panelWidth = getWidth();
+                int panelHeight = getHeight();
+                if (panelWidth <= 0 || panelHeight <= 0) {
+                    return;
+                }
+                int imageWidth = image.getWidth();
+                int imageHeight = image.getHeight();
+                if (imageWidth <= 0 || imageHeight <= 0) {
+                    return;
+                }
+                double scaleX = panelWidth / (double) imageWidth;
+                double scaleY = panelHeight / (double) imageHeight;
+                double scale = fillArea ? Math.max(scaleX, scaleY)
+                        : Math.min(1.0d, Math.min(scaleX, scaleY));
+                if (!Double.isFinite(scale) || scale <= 0.0d) {
+                    return;
+                }
+                int drawWidth = (int) Math.round(imageWidth * scale);
+                int drawHeight = (int) Math.round(imageHeight * scale);
+                int offsetX = (panelWidth - drawWidth) / 2;
+                int offsetY = (panelHeight - drawHeight) / 2;
+                graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                        RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                graphics.drawImage(image, offsetX, offsetY, drawWidth, drawHeight, null);
+                drawOverlays(graphics, offsetX, offsetY, drawWidth, drawHeight, scale);
+            } finally {
+                graphics.dispose();
             }
-            int panelWidth = panel.getWidth();
-            int panelHeight = panel.getHeight();
-            if (panelWidth <= 0 || panelHeight <= 0) {
-                return;
-            }
-            int imageWidth = image.getWidth();
-            int imageHeight = image.getHeight();
-            if (imageWidth <= 0 || imageHeight <= 0) {
-                return;
-            }
+        }
 
-            double scaleX = panelWidth / (double) imageWidth;
-            double scaleY = panelHeight / (double) imageHeight;
-            boolean fill = panel.isFillArea();
-            double scale;
-            if (fill) {
-                scale = Math.max(scaleX, scaleY);
-            } else {
-                scale = Math.min(1.0d, Math.min(scaleX, scaleY));
-            }
-            if (!Double.isFinite(scale) || scale <= 0.0d) {
-                return;
-            }
-            int drawWidth = (int) Math.round(imageWidth * scale);
-            int drawHeight = (int) Math.round(imageHeight * scale);
-            int offsetX = (panelWidth - drawWidth) / 2;
-            int offsetY = (panelHeight - drawHeight) / 2;
+        private void drawOverlays(Graphics2D graphics,
+                                  int offsetX,
+                                  int offsetY,
+                                  int drawWidth,
+                                  int drawHeight,
+                                  double scale) {
             int maxX = offsetX + drawWidth;
             int maxY = offsetY + drawHeight;
-
-            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
             Collection<TrackedFace> faces = trackedFaces.get();
             for (TrackedFace face : faces) {
                 if (face == null || face.track() == null) {
@@ -388,12 +408,10 @@ public final class SessionWindow implements AutoCloseable {
                 if (bounds == null) {
                     continue;
                 }
-
                 int x = offsetX + (int) Math.round(bounds.x * scale);
                 int y = offsetY + (int) Math.round(bounds.y * scale);
                 int w = Math.max(1, (int) Math.round(bounds.width * scale));
                 int h = Math.max(1, (int) Math.round(bounds.height * scale));
-
                 if (x >= maxX || y >= maxY || x + w <= offsetX || y + h <= offsetY) {
                     continue;
                 }
@@ -419,11 +437,9 @@ public final class SessionWindow implements AutoCloseable {
                 Color color = face.overlayColor();
                 graphics.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 90));
                 graphics.fillRect(x, y, w, h);
-
                 graphics.setColor(color);
                 graphics.setStroke(new BasicStroke(3f));
                 graphics.drawRect(x, y, w, h);
-
                 String label = face.studentName() != null ? face.studentName()
                         : face.studentId() != null ? face.studentId()
                         : "Detecting";
