@@ -29,6 +29,7 @@ Key environment options:
   - `ADMIN_PASSCODE` or `ADMIN_PASSCODE_HASH` to protect admin onboarding with a shared secret.
   - `COMPANION_AUTO_PUBLISH`: set to "true" to build companion installers on startup (defaults to `false`).
   - `SUPABASE_RESET_REDIRECT_URL`: absolute URL for Supabase password recovery links (e.g. `https://app.example.com/auth/reset/confirm`). Ensure Supabase's **Site URL** points to the root of your web app (e.g. `https://app.example.com`) so recovery emails redirect back with `?type=recovery&access_token=...`. Add the same `/auth/reset/confirm` URL to Supabase Auth → **Additional Redirect URLs**; otherwise Supabase will ignore the custom redirect and fall back to the Site URL.
+  - `SUPABASE_EMAIL_REDIRECT_URL`: optional absolute URL that Supabase should use for email confirmation links sent after sign-up (e.g. `https://app.example.com/auth/verify`). If omitted, Supabase falls back to the project-wide Site URL.
 
 - **PowerShell**
   ```powershell

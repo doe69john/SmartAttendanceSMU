@@ -13,6 +13,7 @@ public class SupabaseGoTrueProperties {
     private String cookiePath = "/";
     private int refreshTokenTtlDays = 30;
     private String resetRedirectUrl;
+    private String emailRedirectUrl;
 
     public String getBaseUrl() {
         return baseUrl;
@@ -76,6 +77,14 @@ public class SupabaseGoTrueProperties {
 
     public void setResetRedirectUrl(String resetRedirectUrl) {
         this.resetRedirectUrl = resetRedirectUrl;
+    }
+
+    public String getEmailRedirectUrl() {
+        return emailRedirectUrl;
+    }
+
+    public void setEmailRedirectUrl(String emailRedirectUrl) {
+        this.emailRedirectUrl = emailRedirectUrl;
     }
 
 }

@@ -123,6 +123,10 @@ public class SupabaseGoTrueService {
         payload.put("password", password);
         payload.put("data", userData);
         payload.put("gotrue_meta_security", Map.of());
+        String emailRedirectUrl = StringUtils.trimWhitespace(properties.getEmailRedirectUrl());
+        if (StringUtils.hasText(emailRedirectUrl)) {
+            payload.put("email_redirect_to", emailRedirectUrl);
+        }
 
         webClient.post()
                 .uri("/signup")
