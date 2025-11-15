@@ -45,7 +45,8 @@ public class CompanionReleaseService {
 
     private static final Duration DOWNLOAD_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration INSTALLER_DOWNLOAD_TIMEOUT = Duration.ofMinutes(2);
-    private static final String LATEST_MANIFEST_PATH = "releases/latest.json";
+    private static final String LATEST_MANIFEST_PATH =
+            CompanionReleasePaths.scoped("releases/latest.json");
 
     private final SupabaseStorageService storageService;
     private final SupabaseStorageProperties storageProperties;
