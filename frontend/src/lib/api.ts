@@ -84,6 +84,7 @@ export type SessionDetailsWithModel = SessionDetails & {
 export interface CompanionAccessTokenResponse {
   token: string;
   expiresAt: string;
+  backendBaseUrl?: string | null;
 }
 
 export interface SectionAnalytics {

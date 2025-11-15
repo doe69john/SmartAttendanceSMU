@@ -1029,6 +1029,7 @@ const LiveSession = () => {
           modelUrl,
           cascadeUrl,
           labelsUrl,
+          backendBaseUrl: accessToken.backendBaseUrl ?? undefined,
           labels: metadata.labelDisplayNames ?? undefined,
           missingStudentIds:
             metadata.missingStudentIds && metadata.missingStudentIds.length > 0

@@ -128,7 +128,7 @@ public final class SessionRuntime implements AutoCloseable {
         if (settings == null) {
             return;
         }
-        String baseUrl = settings.backendBaseUrl();
+        String baseUrl = resolveBackendBaseUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
             return;
         }
@@ -176,5 +176,15 @@ public final class SessionRuntime implements AutoCloseable {
         if (heartbeatTask != null) {
             heartbeatTask.cancel(true);
         }
+    }
+
+    private String resolveBackendBaseUrl() {
+        if (state != null && state.backendBaseUrl() != null && !state.backendBaseUrl().isBlank()) {
+            return state.backendBaseUrl();
+        }
+        if (settings != null && settings.backendBaseUrl() != null && !settings.backendBaseUrl().isBlank()) {
+            return settings.backendBaseUrl();
+        }
+        return null;
     }
 }

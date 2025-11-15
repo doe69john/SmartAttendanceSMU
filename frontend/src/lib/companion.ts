@@ -19,6 +19,7 @@ export interface CompanionSessionPayload {
   modelUrl: string;
   cascadeUrl: string;
   labelsUrl?: string;
+  backendBaseUrl?: string;
   missingStudentIds?: string[];
   labels?: Record<string, string>;
   authToken?: string;

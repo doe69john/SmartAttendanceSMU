@@ -670,7 +670,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
     }
 
     private void notifyBackendStop() throws Exception {
-        String baseUrl = settings.backendBaseUrl();
+        String baseUrl = resolveBackendBaseUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
             return;
         }
@@ -712,14 +712,19 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         final String resolvedServiceToken = settings.serviceToken() != null ? settings.serviceToken().trim() : "";
         final String sessionId = state.sessionId() != null ? state.sessionId().trim() : "";
         final String sectionId = state.sectionId() != null ? state.sectionId().trim() : "";
+        final String backendBaseUrl = resolveBackendBaseUrl();
         final boolean useCompanionEndpoint = resolvedServiceToken.isBlank()
                 && !resolvedCompanionToken.isBlank()
                 && !sessionId.isBlank()
                 && !sectionId.isBlank();
+        if (backendBaseUrl == null || backendBaseUrl.isBlank()) {
+            log.warn("Backend base URL missing; unable to submit attendance");
+            return CompletableFuture.completedFuture(null);
+        }
         final String targetUrl = useCompanionEndpoint
-                ? settings.backendBaseUrl() + "/companion/sections/" + sectionId + "/sessions/" + sessionId
+                ? backendBaseUrl + "/companion/sections/" + sectionId + "/sessions/" + sessionId
                         + "/attendance"
-                : settings.backendBaseUrl() + "/attendance";
+                : backendBaseUrl + "/attendance";
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -828,7 +833,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
     }
 
     private List<AttendanceRecordView> fetchRosterFromBackend() {
-        String baseUrl = settings.backendBaseUrl();
+        String baseUrl = resolveBackendBaseUrl();
         String sessionId = state.sessionId();
         String sectionId = state.sectionId();
         if (baseUrl == null || baseUrl.isBlank()
@@ -1017,6 +1022,16 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                 return null;
             }
         }
+    }
+
+    private String resolveBackendBaseUrl() {
+        if (state != null && state.backendBaseUrl() != null && !state.backendBaseUrl().isBlank()) {
+            return state.backendBaseUrl();
+        }
+        if (settings != null && settings.backendBaseUrl() != null && !settings.backendBaseUrl().isBlank()) {
+            return settings.backendBaseUrl();
+        }
+        return null;
     }
 
     private record AttendanceRecordView(String studentId,
