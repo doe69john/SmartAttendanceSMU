@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import org.springframework.util.StringUtils;
 
@@ -133,14 +134,39 @@ public class CompanionAccessController {
                 grantedAuthorities);
         CompanionAccessTokenResponse response = new CompanionAccessTokenResponse(
                 issuedToken.token(),
-                issuedToken.expiresAt());
+                issuedToken.expiresAt(),
+                deriveBackendBaseUrl(servletRequest));
         return ResponseEntity.ok(response);
+    }
+
+    private String deriveBackendBaseUrl(HttpServletRequest servletRequest) {
+        if (servletRequest == null) {
+            return "";
+        }
+        String requestUri = servletRequest.getRequestURI();
+        String basePath = requestUri != null ? requestUri : "";
+        int companionIndex = basePath.indexOf("/companion");
+        if (companionIndex >= 0) {
+            basePath = basePath.substring(0, companionIndex);
+        }
+        if (!StringUtils.hasText(basePath)) {
+            basePath = "/";
+        }
+        String baseUrl = ServletUriComponentsBuilder.fromRequestUri(servletRequest)
+                .replacePath(basePath)
+                .replaceQuery(null)
+                .build()
+                .toUriString();
+        if (baseUrl.endsWith("/") && baseUrl.length() > 1) {
+            return baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl;
     }
 
     public record CompanionAccessTokenRequest(UUID sectionId) {
     }
 
-    public record CompanionAccessTokenResponse(String token, OffsetDateTime expiresAt) {
+    public record CompanionAccessTokenResponse(String token, OffsetDateTime expiresAt, String backendBaseUrl) {
     }
 
     public record ErrorResponse(String status, String message) {

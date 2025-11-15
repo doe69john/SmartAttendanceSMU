@@ -91,11 +91,19 @@ public final class CompanionSessionManager {
 
         String bearerToken = normalizeAccessToken(request.authToken());
         String maskedToken = maskToken(bearerToken);
+        String backendBaseUrl = selectBackendBaseUrl(request.backendBaseUrl());
 
         String labelsUrl = resolveLabelsUrl(request);
-        logger.info("Starting asset downloads for companion session {} (section={}). modelUrl={}, labelsUrl={}, cascadeUrl={}, bearerPresent={}, token={}",
-                request.sessionId(), request.sectionId(), request.modelUrl(), labelsUrl, request.cascadeUrl(),
-                StringUtils.isNotBlank(bearerToken), maskedToken);
+        logger.info(
+                "Starting asset downloads for companion session {} (section={}). modelUrl={}, labelsUrl={}, cascadeUrl={}, backendBaseUrl={}, bearerPresent={}, token={}",
+                request.sessionId(),
+                request.sectionId(),
+                request.modelUrl(),
+                labelsUrl,
+                request.cascadeUrl(),
+                backendBaseUrl,
+                StringUtils.isNotBlank(bearerToken),
+                maskedToken);
 
         ModelDownloader.FileDownloadResult model = downloader.downloadTo(sessionDir, request.modelUrl(), "lbph.yml", bearerToken);
         ModelDownloader.FileDownloadResult labels = downloader.downloadTo(sessionDir, labelsUrl, "labels.txt", bearerToken);
@@ -108,6 +116,7 @@ public final class CompanionSessionManager {
                 request.missingStudentIds(),
                 request.labels(),
                 bearerToken,
+                backendBaseUrl,
                 request.scheduledStart(),
                 request.scheduledEnd(),
                 request.lateThresholdMinutes());
@@ -322,5 +331,25 @@ public final class CompanionSessionManager {
             throw new CompanionHttpException(401, "Companion access token missing");
         }
         return token.trim();
+    }
+
+    private String selectBackendBaseUrl(String requestedBaseUrl) {
+        String override = sanitizeBackendBaseUrl(requestedBaseUrl);
+        if (override != null) {
+            return override;
+        }
+        String defaultBase = settings.backendBaseUrl();
+        return sanitizeBackendBaseUrl(defaultBase);
+    }
+
+    private String sanitizeBackendBaseUrl(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim();
+        while (normalized.endsWith("/") && normalized.length() > 1) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 }

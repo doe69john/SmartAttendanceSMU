@@ -18,6 +18,7 @@ public final class SessionState {
     private final List<String> missingStudentIds;
     private final Map<String, String> labelMap;
     private final String companionToken;
+    private final String backendBaseUrl;
     private final Instant scheduledStart;
     private final Instant scheduledEnd;
     private final int lateThresholdMinutes;
@@ -35,6 +36,7 @@ public final class SessionState {
                         List<String> missingStudentIds,
                         Map<String, String> labelMap,
                         String companionToken,
+                        String backendBaseUrl,
                         String scheduledStartIso,
                         String scheduledEndIso,
                         Integer lateThresholdMinutes) {
@@ -46,6 +48,7 @@ public final class SessionState {
                 : List.of();
         this.labelMap = labelMap != null ? Map.copyOf(labelMap) : Map.of();
         this.companionToken = companionToken;
+        this.backendBaseUrl = backendBaseUrl;
         this.startedAt = Instant.now();
         this.lastHeartbeat = this.startedAt;
         this.scheduledStart = parseInstant(scheduledStartIso);
@@ -75,6 +78,10 @@ public final class SessionState {
 
     public String companionToken() {
         return companionToken;
+    }
+
+    public String backendBaseUrl() {
+        return backendBaseUrl;
     }
 
     public Instant startedAt() {
