@@ -128,7 +128,7 @@ public final class SessionRuntime implements AutoCloseable {
         if (settings == null) {
             return;
         }
-        String baseUrl = settings.backendBaseUrl();
+        String baseUrl = resolveBackendBaseUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
             return;
         }
@@ -151,6 +151,11 @@ public final class SessionRuntime implements AutoCloseable {
             builder.header("X-Companion-Token", companionToken.trim());
         }
         backendClient.send(builder.build(), HttpResponse.BodyHandlers.discarding());
+    }
+
+    private String resolveBackendBaseUrl() {
+        String fallback = settings != null ? settings.backendBaseUrl() : null;
+        return state.resolveBackendBaseUrl(fallback);
     }
 
     private String resolveAuthorizationToken() {

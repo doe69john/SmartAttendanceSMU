@@ -16,6 +16,7 @@ export interface CompanionHandshakeResult {
 export interface CompanionSessionPayload {
   sessionId: string;
   sectionId?: string;
+  backendBaseUrl?: string;
   modelUrl: string;
   cascadeUrl: string;
   labelsUrl?: string;

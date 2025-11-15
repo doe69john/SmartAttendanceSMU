@@ -343,6 +343,11 @@ const LiveSession = () => {
     return buildApiUrl(path, { absolute: true });
   }, []);
 
+  const backendApiBaseUrl = useMemo(() => {
+    const base = buildApiUrl('', { absolute: true })?.trim() ?? '';
+    return base.replace(/\/+$/, '');
+  }, []);
+
   const companionReady = companionStatus === 'healthy';
   const isMobileBlocked = !isSupportedDesktop;
 
@@ -1026,6 +1031,7 @@ const LiveSession = () => {
         await startCompanionSession(companionToken, {
           sessionId: scheduled.id,
           sectionId: sessionDetails.sectionId,
+          backendBaseUrl: backendApiBaseUrl || undefined,
           modelUrl,
           cascadeUrl,
           labelsUrl,

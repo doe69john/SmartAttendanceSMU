@@ -67,7 +67,8 @@ final class BackendEventForwarder implements Consumer<RecognitionEvent>, AutoClo
         if (state.sectionId() == null || state.sectionId().isBlank()) {
             return false;
         }
-        if (settings.backendBaseUrl() == null || settings.backendBaseUrl().isBlank()) {
+        String backendBaseUrl = resolveBackendBaseUrl();
+        if (backendBaseUrl == null || backendBaseUrl.isBlank()) {
             return false;
         }
         String token = resolveToken();
@@ -138,12 +139,20 @@ final class BackendEventForwarder implements Consumer<RecognitionEvent>, AutoClo
     }
 
     private String buildEndpoint() {
-        return settings.backendBaseUrl()
+        String backendBaseUrl = resolveBackendBaseUrl();
+        if (backendBaseUrl == null || backendBaseUrl.isBlank()) {
+            throw new IllegalStateException("Backend base URL is not configured");
+        }
+        return backendBaseUrl
                 + "/companion/sections/"
                 + state.sectionId()
                 + "/sessions/"
                 + state.sessionId()
                 + "/recognition-events";
+    }
+
+    private String resolveBackendBaseUrl() {
+        return state.resolveBackendBaseUrl(settings.backendBaseUrl());
     }
 
     private String resolveToken() {

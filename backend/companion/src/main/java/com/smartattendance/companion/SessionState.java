@@ -18,6 +18,7 @@ public final class SessionState {
     private final List<String> missingStudentIds;
     private final Map<String, String> labelMap;
     private final String companionToken;
+    private final String backendBaseUrl;
     private final Instant scheduledStart;
     private final Instant scheduledEnd;
     private final int lateThresholdMinutes;
@@ -37,7 +38,8 @@ public final class SessionState {
                         String companionToken,
                         String scheduledStartIso,
                         String scheduledEndIso,
-                        Integer lateThresholdMinutes) {
+                        Integer lateThresholdMinutes,
+                        String backendBaseUrl) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.sectionId = sectionId;
         this.sessionDirectory = Objects.requireNonNull(sessionDirectory, "sessionDirectory");
@@ -46,6 +48,7 @@ public final class SessionState {
                 : List.of();
         this.labelMap = labelMap != null ? Map.copyOf(labelMap) : Map.of();
         this.companionToken = companionToken;
+        this.backendBaseUrl = sanitizeBackendBaseUrl(backendBaseUrl);
         this.startedAt = Instant.now();
         this.lastHeartbeat = this.startedAt;
         this.scheduledStart = parseInstant(scheduledStartIso);
@@ -75,6 +78,10 @@ public final class SessionState {
 
     public String companionToken() {
         return companionToken;
+    }
+
+    public String backendBaseUrl() {
+        return backendBaseUrl;
     }
 
     public Instant startedAt() {
@@ -151,6 +158,20 @@ public final class SessionState {
         );
     }
 
+    public String resolveBackendBaseUrl(String fallback) {
+        if (backendBaseUrl != null && !backendBaseUrl.isBlank()) {
+            return backendBaseUrl;
+        }
+        if (fallback != null && !fallback.isBlank()) {
+            String trimmed = fallback.trim();
+            while (trimmed.endsWith("/") && trimmed.length() > 1) {
+                trimmed = trimmed.substring(0, trimmed.length() - 1);
+            }
+            return trimmed;
+        }
+        return null;
+    }
+
     private static Instant parseInstant(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -168,5 +189,16 @@ public final class SessionState {
         }
         int sanitized = Math.max(0, value);
         return Math.min(sanitized, 240);
+    }
+
+    private static String sanitizeBackendBaseUrl(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String normalized = raw.trim();
+        while (normalized.endsWith("/") && normalized.length() > 1) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 }
