@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -27,10 +28,12 @@ import java.util.function.Consumer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.sarxos.webcam.Webcam;
 import com.smartattendance.companion.CompanionSettings;
 import com.smartattendance.companion.SessionState;
 import com.smartattendance.config.AttendanceProperties;
+import com.smartattendance.companion.recognition.camera.CameraFeed;
+import com.smartattendance.companion.recognition.camera.OpenCvCameraFeed;
+import com.smartattendance.companion.recognition.camera.WebcamCameraFeed;
 import com.smartattendance.util.OpenCVLoader;
 import com.smartattendance.util.OpenCVUtils;
 import com.smartattendance.vision.HaarFaceDetector;
@@ -84,7 +87,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         return thread;
     });
 
-    private Webcam webcam;
+    private CameraFeed cameraFeed;
     private SessionWindow window;
     private HaarFaceDetector detector;
     private Recognizer recognizer;
@@ -146,8 +149,8 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
             detector = new HaarFaceDetector(resolveCascadePath(), config);
             recognizer = loadRecognizer();
             trackGroup = new FaceTrackGroup(TimeUnit.SECONDS.toMillis(4));
-            webcam = openCamera();
-            window = new SessionWindow(webcam);
+            cameraFeed = openCamera();
+            window = new SessionWindow(cameraFeed.preferredSize());
             window.open();
             window.setManualMarkListener(this::handleManualRosterMark);
             window.setEndSessionListener(this::handleEndSessionRequest);
@@ -168,6 +171,13 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         } catch (Exception ex) {
             log.error("Failed to start recognition runtime: {}", ex.getMessage(), ex);
             running.set(false);
+            if (window != null) {
+                window.close();
+            }
+            if (cameraFeed != null) {
+                cameraFeed.close();
+                cameraFeed = null;
+            }
         }
     }
 
@@ -210,19 +220,26 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         }
     }
 
-    private Webcam openCamera() {
-        List<Webcam> webcams = Webcam.getWebcams();
-        if (webcams.isEmpty()) {
-            throw new IllegalStateException("No webcams detected on this device");
+    private CameraFeed openCamera() {
+        AttendanceProperties.Camera cameraConfig = config.camera();
+        int index = cameraConfig != null ? cameraConfig.index() : 0;
+        double fps = cameraConfig != null ? cameraConfig.fps() : 15.0;
+        Dimension preferredSize = new Dimension(960, 540);
+        if (shouldUseOpenCvCamera()) {
+            log.info("Using OpenCV camera backend for Apple Silicon macOS device");
+            try {
+                return OpenCvCameraFeed.open(Math.max(0, index), preferredSize, fps);
+            } catch (RuntimeException ex) {
+                log.warn("OpenCV camera backend unavailable ({}); falling back to legacy driver", ex.getMessage());
+            }
         }
-        int index = Math.max(0, Math.min(config.camera().index(), webcams.size() - 1));
-        Webcam cam = webcams.get(index);
-        cam.setCustomViewSizes(new Dimension(1280, 720), new Dimension(960, 540));
-        cam.setViewSize(new Dimension(960, 540));
-        if (!cam.isOpen()) {
-            cam.open(true);
-        }
-        return cam;
+        return WebcamCameraFeed.open(Math.max(0, index));
+    }
+
+    private boolean shouldUseOpenCvCamera() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        return os.contains("mac") && (arch.contains("arm") || arch.contains("aarch"));
     }
 
     private String resolveCascadePath() {
@@ -259,14 +276,19 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
     }
 
     private void loop() {
-        long frameIntervalMs = Math.max(20L, Math.round(1000.0 / Math.max(15.0, config.camera().fps())));
+        AttendanceProperties.Camera cameraConfig = config.camera();
+        double fps = cameraConfig != null ? cameraConfig.fps() : 15.0;
+        long frameIntervalMs = Math.max(20L, Math.round(1000.0 / Math.max(15.0, fps)));
         while (running.get()) {
             try {
-                BufferedImage image = webcam.getImage();
+                BufferedImage image = cameraFeed != null ? cameraFeed.captureFrame() : null;
                 if (image == null) {
                     continue;
                 }
                 processFrame(image);
+                if (window != null) {
+                    window.updateCameraFrame(image);
+                }
                 Thread.sleep(frameIntervalMs);
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
@@ -1108,8 +1130,9 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
         if (window != null) {
             window.close();
         }
-        if (webcam != null && webcam.isOpen()) {
-            webcam.close();
+        if (cameraFeed != null) {
+            cameraFeed.close();
+            cameraFeed = null;
         }
         eventBus.publish(new RecognitionEvent(
                 RecognitionEventType.CAMERA_STOPPED,
