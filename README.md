@@ -1,5 +1,7 @@
 # SmartAttendance Platform
 
+Live web app (public, may feel slow at times due to limited CPU credits): https://smartattendancesmu.pages.dev/
+
 SmartAttendance is a two-part attendance solution: a React web app that students and staff use in their browsers, and a Spring Boot service that handles authentication, face-recognition workflows, and reporting APIs. The web client only talks to the backend over HTTPS, so each tier can be hosted independently.
 
 Head into `backend/` or `frontend/` for developer setup guides and environment details.
@@ -9,9 +11,10 @@ This repo uses a simple two-branch workflow:
 | Branch      | Purpose               | Typical Usage                               |
 |-------------|-----------------------|---------------------------------------------|
 | `main`      | Local development     | Windows-focused workflows and tooling.      |
-| `deploy`    | Cloud deployment      | macOS/Linux development and cloud releases. |
+| `deploy`    | macOS-ready branch    | macOS/Linux development and local testing.  |
+| `google`    | Cloud Run deployment  | Source of truth for the Google Cloud Run release. |
 
-> Note: The `deploy` branch is the source of truth for production/cloud deployments.
+> Note: The `google` branch is the source of truth for the Google Cloud Run production deployment, while `deploy` is optimised for macOS/Linux local development.
 > The `main` branch is intended for Windows-specific local development, while macOS users should work from `deploy` for full compatibility.
 
 
@@ -376,6 +379,7 @@ The table below summarises core and extended features implemented in the backend
 | Analytics Dashboard           | Summary stats for professors and students (rates, counts, trends)                       | `DashboardService`, `DashboardController`, `ProfessorDashboardSummary`, `StudentDashboardSummary`                               | Bonus     |
 | Reporting & Export            | Export attendance (section / student) as CSV/XLSX                                       | `ReportingService`, `ReportExport`, `ReportingController` (`/api/reports`)                                                      | Core/Plus |
 | Cloud Storage Integration     | Store face images and model artifacts in Supabase buckets                               | `FaceImageStorageService`, Supabase config in `application.properties`                                                          | Bonus     |
+| Public Web App Availability   | Web app publicly deployed for SMU to access via Cloudflare Pages                        | `frontend` build + infra at https://smartattendancesmu.pages.dev/                                                               | Bonus     |
 | Externalised Configuration    | Environment + file‑based configuration for DB, queues, camera, detection, recognizer    | `application.properties`, `.env.local`, `runtime/config.properties`, `AttendanceProperties`                                     | Core      |
 | Auth & Authorisation          | JWT‑based auth, role‑based access control, passcode‑protected flows                     | `SecurityConfiguration`, `SupabaseAuthController`, `AdminPasscodeService`, `ProfessorPasscodeService`, `Role`, `RequestRateLimiter` | Core/Plus |
 | Companion Integration         | Companion app bootstrapping and asset delivery                                          | `companion` module (`CompanionApplication`, `ModelDownloader`, `SessionRuntime`), `CompanionAssetController`, `CompanionReleaseController` | Bonus     |
