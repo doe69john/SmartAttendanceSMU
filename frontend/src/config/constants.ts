@@ -8,7 +8,7 @@ export const APP_CONFIG = {
   timeZone: 'Asia/Singapore',
   
   // Student validation
-  allowedEmailDomains: ['.smu.edu.sg'],
+  allowedEmailDomains: ['.smu.edu.sg', '@smu.edu.sg'],
   minStudentIdLength: 8,
   maxStudentIdLength: 12,
   

@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { GraduationCap, Users, Shield, Eye, EyeOff, UserCheck } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { ApiError, fetchApplicationSettings, validateAdminPasscode, validateStaffPasscode } from '@/lib/api';
+import { APP_CONFIG } from '@/config/constants';
 
 export default function AuthPage() {
   const { signIn, signUp, session, loading } = useAuth();
@@ -84,8 +85,13 @@ export default function AuthPage() {
       }
       
       if (formData.role === 'student') {
-        if (!formData.email.includes('.smu.edu.sg')) {
-          return 'Student email must be from SMU domain (*.smu.edu.sg)';
+        const normalizedEmail = formData.email.trim().toLowerCase();
+        const hasAllowedDomain = APP_CONFIG.allowedEmailDomains.some(domain =>
+          normalizedEmail.endsWith(domain.toLowerCase())
+        );
+
+        if (!hasAllowedDomain) {
+          return 'Student email must be from SMU domain (@smu.edu.sg or *.smu.edu.sg)';
         }
         
         if (!formData.studentId || formData.studentId.length < 8) {
