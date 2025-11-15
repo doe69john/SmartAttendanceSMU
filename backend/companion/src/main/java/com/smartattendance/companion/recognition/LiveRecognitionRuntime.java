@@ -667,7 +667,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
     }
 
     private void notifyBackendStop() throws Exception {
-        String baseUrl = settings.backendBaseUrl();
+        String baseUrl = resolveBackendBaseUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
             return;
         }
@@ -713,10 +713,15 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
                 && !resolvedCompanionToken.isBlank()
                 && !sessionId.isBlank()
                 && !sectionId.isBlank();
+        final String backendBaseUrl = resolveBackendBaseUrl();
+        if (backendBaseUrl == null || backendBaseUrl.isBlank()) {
+            CompletableFuture<AttendanceRecordView> failed = new CompletableFuture<>();
+            failed.completeExceptionally(new IllegalStateException("Backend base URL is not configured"));
+            return failed;
+        }
         final String targetUrl = useCompanionEndpoint
-                ? settings.backendBaseUrl() + "/companion/sections/" + sectionId + "/sessions/" + sessionId
-                        + "/attendance"
-                : settings.backendBaseUrl() + "/attendance";
+                ? backendBaseUrl + "/companion/sections/" + sectionId + "/sessions/" + sessionId + "/attendance"
+                : backendBaseUrl + "/attendance";
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -825,7 +830,7 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
     }
 
     private List<AttendanceRecordView> fetchRosterFromBackend() {
-        String baseUrl = settings.backendBaseUrl();
+        String baseUrl = resolveBackendBaseUrl();
         String sessionId = state.sessionId();
         String sectionId = state.sectionId();
         if (baseUrl == null || baseUrl.isBlank()
@@ -1061,6 +1066,11 @@ public final class LiveRecognitionRuntime implements AutoCloseable {
             return false;
         }
         return true;
+    }
+
+    private String resolveBackendBaseUrl() {
+        String fallback = settings != null ? settings.backendBaseUrl() : null;
+        return state.resolveBackendBaseUrl(fallback);
     }
 
     @Override

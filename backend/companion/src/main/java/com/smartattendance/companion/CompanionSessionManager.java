@@ -110,7 +110,8 @@ public final class CompanionSessionManager {
                 bearerToken,
                 request.scheduledStart(),
                 request.scheduledEnd(),
-                request.lateThresholdMinutes());
+                request.lateThresholdMinutes(),
+                request.backendBaseUrl());
         long totalBytes = model.size() + cascade.size() + labels.size();
         state.registerAssets(model.path(), cascade.path(), labels.path(), totalBytes);
         writeSessionMetadata(state, model, cascade, labels);
